@@ -24,4 +24,5 @@ for carrefour in data["features"] :
                     if i != car :
                         carrefour_adjacence[car].append(i)
 
+# obtient le dictionnaire d'adjacence des carrefour à chaque carrefour est associe le carrefour auxquel il peut donner -> graphe non oriente
 print(carrefour_adjacence)
