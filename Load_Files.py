@@ -1,6 +1,11 @@
 import json
 
 def load_data_nodes():
+    """Charge les données du fichier des noeuds de la trame viaire et calcule le dictionnaire d'adjacence
+
+    Returns:
+        dict: le dictionnaire d'adjacence des codes FUV
+    """
     #ouverture du fihcier des noeuds de la trame viaire
     with open("noeud_trame_viaire.geojson",'r') as fichier :
         data = json.load(fichier)
@@ -28,3 +33,21 @@ def load_data_nodes():
     # obtient le dictionnaire d'adjacence des carrefour à chaque carrefour est associe le carrefour auxquel il peut donner -> graphe non oriente
     print(carrefour_adjacence)
     return carrefour_adjacence
+
+
+def load_data_troncon():
+    # ouverture du fichier
+    with open("troncon_trame_viaire.geojson",'r') as fichier :
+        data = json.load(fichier)
+
+    liste_troncons = []
+    for troncon in data["features"]:
+        liste_troncons.append(troncon["properties"])
+
+
+    return liste_troncons
+
+
+if __name__ == "__main__" :
+    liste = load_data_troncon()
+    print(liste[0:10])
