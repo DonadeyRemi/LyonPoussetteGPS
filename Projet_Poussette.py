@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter.ttk import Separator
+from tkinter import messagebox
 import Load_Files
 
 
@@ -18,7 +19,7 @@ class MainWindow():
 
     def initWidget(self):
         self.canvas = tk.Canvas(self.root,bg="gray")
-        self.canvas.pack(side = tk.LEFT,fill=tk.Y)
+        self.canvas.pack(side = tk.LEFT,fill=tk.BOTH)
 
         separator_canvas = Separator(self.root,orient=tk.VERTICAL)
         separator_canvas.pack(side=tk.LEFT,fill=tk.Y)
@@ -31,10 +32,13 @@ class MainWindow():
         self.var_entry_start = tk.StringVar(value="Départ")
         self.start_entry = tk.Entry(self.frame_dest,bg='gray',fg='black',textvariable=self.var_entry_start)
         self.start_entry.pack(side=tk.TOP,fill=tk.X)
+        self.start_entry.bind("<Button-1>",self.effacer_prop_start)
 
         self.var_entry_end = tk.StringVar(value="Arrivée")
         self.end_entry = tk.Entry(self.frame_dest,bg="gray",fg='black',textvariable=self.var_entry_end)
         self.end_entry.pack(fill=tk.X)
+        self.end_entry.bind("<KeyPress-Return>",self.start_research)
+        self.end_entry.bind("<Button-1>",self.effacer_prop_end)
 
         self.frame_dest.pack(side=tk.TOP,fill=tk.X)
 
@@ -75,10 +79,38 @@ class MainWindow():
 
         self.frame_princ.pack(fill=tk.Y)
 
+        #frame qui contient les widgets en mode trajet
+        self.frame_trajet = tk.Frame(self.root)
+
+        self.var_prop_trajet = tk.StringVar(value=f"Votre Trajet\n {self.var_entry_start.get()} vers {self.var_entry_end.get()}")
+        self.label_trajet_prop = tk.Label(self.frame_trajet,textvariable=self.var_prop_trajet,padx=5,pady=5)
+        self.label_trajet_prop.pack(side=tk.TOP,fill=tk.X)
+
+        self.button_change_iti = tk.Button(self.frame_trajet,text="Modifier votre itineraire",bg='gray',fg='black',relief='flat',padx=5,pady=5)
+        self.button_change_iti.pack(side=tk.TOP,fill=tk.X)
+        self.button_change_iti.bind("<Button-1>",self.bouton_change_iti)
+
+        
+        self.button_stop_iti = tk.Button(self.frame_trajet,text="Arreter l'itineraire en cours",bg='gray',fg='black',relief='flat',padx=5,pady=5)
+        self.button_stop_iti.pack(side=tk.BOTTOM,fill=tk.X)
+        self.button_stop_iti.bind("<Button-1>",self.stop_iti)
+        
+        self.button_start_iti = tk.Button(self.frame_trajet,text="Commencer votre itinéraire",bg='gray',fg='black',relief='flat',padx=5,pady=5)
+        self.button_start_iti.pack(side=tk.BOTTOM,fill=tk.X)
+        self.button_start_iti.bind("<Button-1>",self.open_window_trajet)
+
+        self.frame_trajet.pack_forget()
+
 
 
     def loop(self):
         self.root.mainloop()
+
+    def effacer_prop_start(self,event):
+        self.var_entry_start.set("")
+
+    def effacer_prop_end(self,event):
+        self.var_entry_end.set("")
 
     def bouton_param_av(self,event):
         print("Vous avez cliquez sur le boutons des parametres avancé")
@@ -89,9 +121,41 @@ class MainWindow():
         dialog_params_av = TopLevelParams(self.root)
 
     def start_research(self,event):
-        print("Vous avez voulu lancer un recherche d'itinaire")
-        toplevel_iti = TopLevelParcour(self.root)
+        """Fonction callback du bouton de calcul de l'itineraire, il lance la recherche de l'itineraire
+
+        Args:
+            event (dict): the tk event object return after the user event
+        """
+        #on cache la frame principale et affiche la frame itineraire
+        self.frame_princ.pack_forget()
+        self.var_prop_trajet.set(f"Votre Trajet\n {self.var_entry_start.get()} vers {self.var_entry_end.get()}")
+        self.frame_trajet.pack(fill=tk.Y)
+
+    def bouton_change_iti(self,event):
+        msg_user = messagebox.askyesno("Changer d'itineraire ?","Voulez vous vraiment changer d'itinéraire ?\n Celui-ci sera perdu")
+        if msg_user == True :
+            #Affiche de nouveau le frame principal
+            self.frame_trajet.pack_forget()
+            self.frame_princ.pack(fill=tk.Y)
+            
+
         
+    def open_window_trajet(self,event):
+        """Fonction callback du bouton commencer le trajet, ouvre la fenetre du trajet carrefour par carrefour
+
+        Args:
+            event (dict): the tk event object return after the user event 
+        """
+        TopLevelParcour(self.root)
+
+    def stop_iti(self,event):
+        """Fonction callback du bouton arreter le trajet, ferme la fenetre topLevel trajet si ouverte et revient à la frame principale
+
+        Args:
+            event (dict): the tk event object return after the user event
+        """
+        self.frame_trajet.pack_forget()
+        self.frame_princ.pack(fill=tk.Y)
 
 
     def load_all_datas(self):
@@ -140,14 +204,12 @@ class TopLevelParcour():
         self.button_forward_step = tk.Button(self.frame_bt,text="Avancer d'une étape",bg='gray',fg='black',relief='flat')
         self.button_forward_step.grid(column=2,row=0,padx=5,pady=5)
 
-        self.button_stop = tk.Button(self.frame_bt,text="Changer d'itinéraire",bg='gray',fg='black',relief='flat')
-        self.button_stop.grid(column=1,row=0,padx=5,pady=5)
-
         self.frame_bt.pack()
 
     def show_iti(self):
         rayon_centre = 10
         self.main_canvas.create_oval(400/2-rayon_centre,400/2-rayon_centre,400/2+rayon_centre,400/2+rayon_centre,fill='',width=2,outline='black')
+
 
 
 if __name__ == "__main__":
