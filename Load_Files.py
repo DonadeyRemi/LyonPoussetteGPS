@@ -1,8 +1,5 @@
 import json
 
-f_troncons_geojson = "troncon_trame_viaire.geojson"
-f_noeuds_geojson = "noued_trame_viaire.geojson"
-f_chausses_geojson = "chaussees_trotoirs.geojson"
 f_point_debouche = "point_debouche.geojson"
 
 
@@ -43,6 +40,10 @@ def load_data_nodes():
 
 
 def charger_donnees():
+    f_troncons_geojson = "troncon_trame_viaire.geojson"
+    f_noeuds_geojson = "noued_trame_viaire.geojson"
+    f_chausses_geojson = "chaussees_trotoirs.geojson"
+    
     with open(f_troncons_geojson) as fichier :
         data = json.load(fichier)
     dico_rues = {}    
@@ -126,16 +127,6 @@ def charger_donnees():
     print(rues_adjacentes)
     #print(len(rues_adjacentes))
 
-def arrondi(nombre, nb_chiffres):
-    nombre_str = str(nombre)
-    nb_chiffres += nombre_str.index(".") + 1
-    if len(nombre_str) > nb_chiffres :
-        if int(nombre_str[nb_chiffres]) >= 5:
-            modif = str(int(nombre_str[(nb_chiffres-1)]) + 1)
-            nombre = float(nombre_str[:nb_chiffres-1]+modif)
-        else:
-            nombre = float(nombre_str[:nb_chiffres])
-    return nombre
 
 
 if __name__ == "__main__" :
