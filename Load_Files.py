@@ -1,4 +1,5 @@
 import json
+import math
 
 f_point_debouche = "point_debouche.geojson"
 
@@ -102,7 +103,7 @@ def charger_donnees():
                 if dico_rues.get(f'{rue}',"ERROR") != "ERROR":
                     l_troncons = []
                     for code_tr, proprietes in dico_rues[rue].items():                        
-                        if proprietes["GPS"][0] == co_gps_car or proprietes["GPS"][-1] == co_gps_car: #demander pourquoi indice -1 et pas 1 car pas 2 coordonnées gps ?
+                        if proprietes["GPS"][0] == co_gps_car or proprietes["GPS"][-1] == co_gps_car: #demander pourquoi indice -1 et pas 1 car pas 2 coordonnées gps ? car il y a plusieur co gps pour décrire les virage du troncon
                             l_troncons.append(code_tr)
                     for troncon in l_troncons:
                         l_rue_troncon_ad.append((rue,troncon))                                
@@ -126,11 +127,25 @@ def charger_donnees():
     #print(len(rues_adjacentes))
     return rues_adjacentes,dico_rues
 
+def give_troncon_nearest_gps(co_gps_user,dico_rues):
+    d_min = 2e+6 #ici on va comparer les distance carré entre elles (et la distance maximale étant la circonsphérence de la terre)
+    id_rue_troncon = {(0,0) : co_gps_user}
+    for fuv in dico_rues.keys():
+        for troncon in dico_rues[fuv].keys():
+            for co_gps in dico_rues[fuv][troncon]['GPS'] :
+                d = math.acos(math.sin(math.radians(co_gps_user[0])*math.sin(math.radians(co_gps[0])))) + math.cos(math.radians(co_gps_user[0]))*math.cos(math.radians(co_gps[0]))*math.cos(math.radians(co_gps_user[1]-co_gps[1]))*6371 #formule de la distance entre 2 points sur une sphère
+                if d < d_min :
+                    id_rue_troncon = {(fuv,troncon) : co_gps}
+                    d_min = d
+
+
+    return id_rue_troncon
 
 
 if __name__ == "__main__" :
     adj,rue = charger_donnees()
-    print(rue)
+    #print(rue)
+    print(give_troncon_nearest_gps([45.788528,4.829792],rue))
     
     """
     for k in adj.keys() :
