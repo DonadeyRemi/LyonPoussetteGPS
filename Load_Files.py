@@ -41,7 +41,7 @@ def load_data_nodes():
 
 def charger_donnees():
     f_troncons_geojson = "troncon_trame_viaire.geojson"
-    f_noeuds_geojson = "noued_trame_viaire.geojson"
+    f_noeuds_geojson = "noeud_trame_viaire.geojson"
     f_chausses_geojson = "chaussees_trotoirs.geojson"
     
     with open(f_troncons_geojson) as fichier :
@@ -52,8 +52,8 @@ def charger_donnees():
         rue = segment["properties"]["codefuv"]
         troncon = segment["properties"]["codetroncon"]
         for i in range(len(co_gps_rue)):
-            co_gps_rue[i][0] = arrondi(co_gps_rue[i][0], 12)
-            co_gps_rue[i][1] = arrondi(co_gps_rue[i][1], 12)
+            co_gps_rue[i][0] = round(co_gps_rue[i][0],12)
+            co_gps_rue[i][1] = round(co_gps_rue[i][1],12)
 
         if rue not in dico_rues.keys():
             dico_rues[rue] = {troncon: {"GPS" : co_gps_rue} }
@@ -93,8 +93,6 @@ def charger_donnees():
     rues_adjacentes = {}
     for carrefour in data["features"] :
         co_gps_car = list(carrefour["geometry"]["coordinates"])
-        #co_gps_car[0] = arrondi(co_gps_car[0], 12)
-        #co_gps_car[1] = arrondi(co_gps_car[1], 12)
         co_gps_car[0] = round(co_gps_car[0],12)
         co_gps_car[1] = round(co_gps_car[1],12)
         if len(carrefour["properties"]['codefuvcarrefour']) > 0 :
@@ -104,7 +102,7 @@ def charger_donnees():
                 if dico_rues.get(f'{rue}',"ERROR") != "ERROR":
                     l_troncons = []
                     for code_tr, proprietes in dico_rues[rue].items():                        
-                        if proprietes["GPS"][0] == co_gps_car or proprietes["GPS"][-1] == co_gps_car:
+                        if proprietes["GPS"][0] == co_gps_car or proprietes["GPS"][-1] == co_gps_car: #demander pourquoi indice -1 et pas 1 car pas 2 coordonnées gps ?
                             l_troncons.append(code_tr)
                     for troncon in l_troncons:
                         l_rue_troncon_ad.append((rue,troncon))                                
@@ -124,11 +122,18 @@ def charger_donnees():
                                 rues_adjacentes[(rue,troncon)].append(i)
     
     #print(dico_rues)
-    print(rues_adjacentes)
+    #print(rues_adjacentes)
     #print(len(rues_adjacentes))
+    return rues_adjacentes,dico_rues
 
 
 
 if __name__ == "__main__" :
-    liste = load_data_troncon()
-    print(liste[0:10])
+    adj,rue = charger_donnees()
+    print(rue)
+    
+    """
+    for k in adj.keys() :
+        if len(adj[k]) == 1 :
+            print(k,adj[k])
+    """
