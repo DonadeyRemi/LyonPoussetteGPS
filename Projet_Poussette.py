@@ -1,3 +1,6 @@
+#!/usr/bin/python
+# -*- encoding: utf8 -*-
+
 import tkinter as tk
 from tkinter.ttk import Separator
 from tkinter import messagebox
@@ -159,7 +162,7 @@ class MainWindow():
 
 
     def load_all_datas(self):
-        self.carrefour_adjacences = Load_Files.load_data_nodes()
+        self.carrefour_adjacences,self.dico_rues = Load_Files.charger_donnees()
 
 
 
