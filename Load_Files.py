@@ -158,7 +158,7 @@ def dist_between(start_fuv_troncon, end_fuv_troncon, dico_rues):
         
         return D 
 
-def astar(start_fuv_troncon, end_fuv_troncon, graph): # J'ai pas trouvé de dico dans le bon format : dico d'adjacences par coordonées
+def astar(start_fuv_troncon, end_fuv_troncon, dico_rues): # J'ai pas trouvé de dico dans le bon format : dico d'adjacences par coordonées
     #start et end nodes : tuples
     queue = PriorityQueue() #from queue import PriorityQueue
     queue.put(start_fuv_troncon,0)
@@ -174,11 +174,11 @@ def astar(start_fuv_troncon, end_fuv_troncon, graph): # J'ai pas trouvé de dico
             print(final_dist, path)
             break
             
-        for next_fuv_troncon in graph[current_node]: #pas bon
-            new_cost = cost[current_node] + graph[current_node][next_fuv_troncon]
+        for next_fuv_troncon in dico_rues[current_node]: #pas bon
+            new_cost = cost[current_node] + dico_rues[current_node][next_fuv_troncon]
             if next_fuv_troncon not in cost or new_cost < cost[next_fuv_troncon]:
                 cost[next_fuv_troncon]= new_cost
-                priority = new_cost + dist_between(next_fuv_troncon,end_fuv_troncon)
+                priority = new_cost + dist_between(next_fuv_troncon,end_fuv_troncon,dico_rues)
                 queue.put(next_fuv_troncon, priority)
                 path[next_fuv_troncon] = current_node
                 
