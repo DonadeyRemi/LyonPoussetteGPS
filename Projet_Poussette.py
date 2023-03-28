@@ -213,8 +213,57 @@ class TopLevelParcour():
         rayon_centre = 10
         self.main_canvas.create_oval(400/2-rayon_centre,400/2-rayon_centre,400/2+rayon_centre,400/2+rayon_centre,fill='',width=2,outline='black')
 
-
-
+        
+    def dist_between(self, start_node, end_node): #il faut utiliser le dico_rues du fichier Load_Files
+        D = 6371*(math.pi/2 - math.asin(math.sin(end_node[1])*math.sin(start_node[1]) + math.cos(end_node[0]-start_node[0])*math.cos(start_node[1])*math.cos(end_node[1])))
+        return D #le plus court chemin entre deux points: à vol d'oiseau
+    
+    def astar(self, star_node, end_node, graph): # J'ai pas trouvé de dico dans le bon format : dico d'adjacences par coordonées
+        #start et end nodes : tuples
+        queue = PriorityQueue() #from queue import PriorityQueue
+        queue.put(start_node,0)
+        path = {start_node : start_node}
+        cost = {start_node : 0}
+        
+        
+        while not queue.empty():
+            current_node = queue.get() 
+            
+            if current_node == end_node :
+                return final_dist, path
+                print(final_dist, path)
+                break
+                
+            for next_node in graph[current_node]: #pas bon
+                new_cost = cost[current_node] + graph[current_node][next_node]
+                if next_node not in cost or new_cost < cost[next_node]:
+                    cost[next_node]= new_cost
+                    priority = new_cost + heuristic(next_node,end_node)
+                    queue.put(next_node, priority)
+                    path[next_node] = current_node
+                    
+        return path, cost
+            
 if __name__ == "__main__":
     root = MainWindow()
     root.loop()
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
