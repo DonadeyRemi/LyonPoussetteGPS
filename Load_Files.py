@@ -3,6 +3,7 @@
 
 import json
 import math
+from queue import PriorityQueue
 
 f_point_debouche = "point_debouche.geojson"
 
@@ -140,6 +141,49 @@ def give_troncon_nearest_address(adresse,dico_rues):
             except KeyError as e :
                 print(f"[KeyError] , la clé commune ou nom n'existe pas pour cet identifiant {(fuv,troncon)}")
     return id_rue_troncon 
+
+
+def dist_between(start_fuv_troncon, end_fuv_troncon, dico_rues):
+    """Calcule la distance en ligne "droite", distance à vol d'oisieau entre ces 2 identifiants de rues
+
+    Args:
+        start_fuv_troncon (tuple): identifiant (FUV,troncon) correspondant au premier point
+        end_fuv_troncon (tuple): idientifiant (FUV,troncon) correspondant au deuxième point
+        dico_rues (dict): le dictionnaire de tous les identifiants (FUV,troncon) avec leurs propriétés et donc les coordonnées GPS
+
+    Returns:
+        float: la distance à vol d'oiseau en km
+    """
+        D = 6371*(math.pi/2 - math.asin(math.sin(dico_rues[end_fuv_troncon]['GPS'][1])*math.sin(dico_rues[start_fuv_troncon]['GPS'][1]) + math.cos(dico_rues[end_fuv_troncon]['GPS'][0]-dico_rues[start_fuv_troncon]['GPS'][0])*math.cos(dico_rues[start_fuv_troncon]['GPS'][1])*math.cos(dico_rues[end_fuv_troncon]['GPS'][1])))
+        
+        return D 
+
+def astar(start_fuv_troncon, end_fuv_troncon, graph): # J'ai pas trouvé de dico dans le bon format : dico d'adjacences par coordonées
+    #start et end nodes : tuples
+    queue = PriorityQueue() #from queue import PriorityQueue
+    queue.put(start_fuv_troncon,0)
+    path = {start_fuv_troncon : start_fuv_troncon}
+    cost = {start_fuv_troncon : 0}
+    
+    
+    while not queue.empty():
+        current_node = queue.get() 
+        
+        if current_node == end_fuv_troncon :
+            return final_dist, path
+            print(final_dist, path)
+            break
+            
+        for next_fuv_troncon in graph[current_node]: #pas bon
+            new_cost = cost[current_node] + graph[current_node][next_fuv_troncon]
+            if next_fuv_troncon not in cost or new_cost < cost[next_fuv_troncon]:
+                cost[next_fuv_troncon]= new_cost
+                priority = new_cost + dist_between(next_fuv_troncon,end_fuv_troncon)
+                queue.put(next_fuv_troncon, priority)
+                path[next_fuv_troncon] = current_node
+                
+    return path, cost
+
 
 
 if __name__ == "__main__" :
