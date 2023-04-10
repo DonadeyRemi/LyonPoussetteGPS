@@ -13,18 +13,22 @@ class MainWindow():
         # on initialise d'abord la fenetre principale sur un affichage de chargement, le temps que les donnees se chargent
         self.root = tk.Tk()
         self.root.geometry("300x200")
-        self.loading_label = tk.Label(self.root, text = "Chargement des données", font = "Calibri 16")
-        self.loading_label.pack(anchor = tk.CENTER)
+        self.loading_label_1 = tk.Label(self.root, text = "Chargement des données", font = "Calibri 16")
+        self.loading_label_1.pack(anchor = tk.CENTER)
+        self.loading_label_2 = tk.Label(self.root, text = "Veuillez patienter", font = "Calibri 13")
+        self.loading_label_2.pack(anchor = tk.CENTER)
         self.root.title("Lyonyroule")
         # la fonction load_all_datas est lancée au bout de 100ms après le démarage (cf. ligne 679)
         # la fonction initWidget est appelée à la fin de la fonction load_all_datas
         
         #itineraire fictif pour test fenetre trajet
-        self.itineraire = [('22416', 'T54924'),('37324', 'T54925'),('37324', 'T54926'),('36078', 'T23765')]
-
+        #self.itineraire = [('22416', 'T54924'),('37324', 'T54925'),('37324', 'T54926'),('36078', 'T23765')]
+        self.itineraire = [('33788','T27222'),('33787','T27233'),('33787','T35503'),('33785','T35505'),('33786','T27243'),('33793','T27247'),('33792','T27266'),('33796','T27274'),('33796','T27275'),('33794','T27269')]
+        self.itineraire.reverse()
 
     def initWidget(self):
-        self.loading_label.destroy()
+        self.loading_label_1.destroy()
+        self.loading_label_2.destroy()
         self.root.geometry("600x600")
         
         self.canvas = tk.Canvas(self.root,bg="gray")
@@ -229,6 +233,9 @@ class TopLevelParcour():
             self.main_canvas.delete(self.ligne_pre)
             self.main_canvas.delete(self.ligne_suiv)
             self.main_canvas.delete(self.rond_noeud)
+            self.main_canvas.delete(self.ligne_nord)
+            self.main_canvas.delete(self.texte_nord)
+            self.main_canvas.delete(self.rect_nord)
             for ligne in self.liste_ligne_adj :
                 self.main_canvas.delete(ligne)
             self.etape -= 1
@@ -239,6 +246,9 @@ class TopLevelParcour():
         self.main_canvas.delete(self.ligne_pre)
         self.main_canvas.delete(self.ligne_suiv)
         self.main_canvas.delete(self.rond_noeud)
+        self.main_canvas.delete(self.ligne_nord)
+        self.main_canvas.delete(self.texte_nord)
+        self.main_canvas.delete(self.rect_nord)
         for ligne in self.liste_ligne_adj :
             self.main_canvas.delete(ligne)
         if self.etape + 1 < len(self.itineraire):
@@ -250,25 +260,34 @@ class TopLevelParcour():
         #Recherche des segments adjacents, compilation de leurs co GPS dans un dictionnaire
         #puis passage en co cartesienne
         dico_fuv_tr_adj = self.compute_cross(fuv_tr_pre, fuv_tr_suiv)
-
+        #calcul des points qui seront visible et qu'il faut donc prendreen compte pour l'orientation 
+        dist_min = self.calcul_dist_min(dico_fuv_tr_adj)
+        i = 1
+        while i < len(dico_fuv_tr_adj["precedent"][fuv_tr_pre]) - 1 and self.distance(dico_fuv_tr_adj["precedent"][fuv_tr_pre], 0, i) < dist_min:
+            i += 1
         #Calcul de l'angle entre le segment precedent (premier et dernier point GPS)
         # et l'horizontale (axe x)
         x_noeud = dico_fuv_tr_adj["precedent"][fuv_tr_pre][0][0]
         y_noeud = dico_fuv_tr_adj["precedent"][fuv_tr_pre][0][1]
-        x_precedent = dico_fuv_tr_adj["precedent"][fuv_tr_pre][-1][0]
-        y_precedent = dico_fuv_tr_adj["precedent"][fuv_tr_pre][-1][1]
-        alpha = self.calcul_angle(x_noeud, y_noeud, x_precedent, y_precedent)
+        x_precedent = dico_fuv_tr_adj["precedent"][fuv_tr_pre][i][0]
+        y_precedent = dico_fuv_tr_adj["precedent"][fuv_tr_pre][i][1]
+        alpha_pre = self.calcul_angle(x_noeud, y_noeud, x_precedent, y_precedent)
         #Rotation du repere pour avoir le segment precedent en bas de l'ecran, vertical
-        dico_fuv_tr_rot = self.rotation_repere(alpha, dico_fuv_tr_adj)
-
+        dico_fuv_tr_rot = self.rotation_repere(alpha_pre, dico_fuv_tr_adj)
         #Determination de l'extrémité d'un segment adjacent la plus proche du noeud
         # selon la norme infini (cf. cours de maths)
         # permet d'avoir la vision la plus large possible sans voir d'autres noeuds
-        dist_min = self.calcul_dist_min(dico_fuv_tr_rot)
+        norme_min = self.calcul_norme_min(dico_fuv_tr_rot)
         xy_noeud = dico_fuv_tr_rot["precedent"][fuv_tr_pre][0]
         #Mise à l'echelle des co en fonction de la distance min
-        dico_fuv_tr_carte = self.xy_cartesien(dist_min, dico_fuv_tr_rot, xy_noeud)
-
+        dico_fuv_tr_carte = self.xy_cartesien(norme_min, dico_fuv_tr_rot, xy_noeud)
+        co_nord = [[370-math.cos(alpha_pre)*20, 30+math.sin(alpha_pre)*20], [370+math.cos(alpha_pre)*20, 30-math.sin(alpha_pre)*20]]
+        #Dessin sur le canvas et affichage des informations
+        self.dessine_noeud(dico_fuv_tr_carte, fuv_tr_pre, fuv_tr_suiv, co_nord)
+        self.instructions(dico_fuv_tr_carte, fuv_tr_pre, fuv_tr_suiv)
+        
+        
+    def dessine_noeud(self, dico_fuv_tr_carte, fuv_tr_pre, fuv_tr_suiv, co_nord):
         #on trace les segments suivant et precedent
         self.ligne_pre = self.main_canvas.create_line(dico_fuv_tr_carte["precedent"][fuv_tr_pre], fill = "red", width = 15)
         self.ligne_suiv = self.main_canvas.create_line(dico_fuv_tr_carte["suivant"][fuv_tr_suiv], fill = "red", width = 15)
@@ -281,6 +300,39 @@ class TopLevelParcour():
         x_noeud = dico_fuv_tr_carte["precedent"][fuv_tr_pre][0][0]
         y_noeud = dico_fuv_tr_carte["precedent"][fuv_tr_pre][0][1]
         self.rond_noeud = self.main_canvas.create_oval(x_noeud-20,y_noeud-20,x_noeud+20,y_noeud+20, fill = "red")
+        #on trace le nord
+        self.rect_nord = self.main_canvas.create_rectangle(348,8,392,85, fill = "white")
+        self.ligne_nord = self.main_canvas.create_line(co_nord, fill = "black", width = 4, arrow = "last", arrowshape = (16,20,6))
+        self.texte_nord = self.main_canvas.create_text(370, 70, text = "N", fill = "black", font ="15")
+        
+    def instructions(self, dico_fuv_tr_carte, fuv_tr_pre, fuv_tr_suiv):
+        i = 1
+        while i < len(dico_fuv_tr_carte["suivant"][fuv_tr_suiv]) - 1 and self.distance(dico_fuv_tr_carte["suivant"][fuv_tr_suiv], 0, i) < 200*math.sqrt(2)/2:
+            i += 1
+        x_suivant = dico_fuv_tr_carte["suivant"][fuv_tr_suiv][i][0]
+        y_suivant = dico_fuv_tr_carte["suivant"][fuv_tr_suiv][i][1]
+        x_noeud = dico_fuv_tr_carte["precedent"][fuv_tr_pre][0][0]
+        y_noeud = dico_fuv_tr_carte["precedent"][fuv_tr_pre][0][1]
+        
+        texte_instruction = ""
+        if fuv_tr_pre[0] == fuv_tr_suiv[0]:
+            texte_instruction += "Continuer "
+        else:
+            texte_instruction += "Prendre "
+        if self.calcul_angle(x_suivant, y_suivant, x_noeud, y_noeud) < 3*math.pi/8:
+            texte_instruction += "à gauche "
+        elif self.calcul_angle(x_suivant, y_suivant, x_noeud, y_noeud) > 5*math.pi/8:
+            texte_instruction += "à droite "
+        else:
+            texte_instruction += "tout droit "
+        texte_instruction += "sur "
+        if self.dico_rues[fuv_tr_suiv[0]][fuv_tr_suiv[1]].get("Nom","") != "":
+            texte_instruction += self.dico_rues[fuv_tr_suiv[0]][fuv_tr_suiv[1]]["Nom"]
+        elif self.dico_rues[fuv_tr_suiv[0]][fuv_tr_suiv[1]].get("Denomination_route","") != "":
+            texte_instruction += self.dico_rues[fuv_tr_suiv[0]][fuv_tr_suiv[1]]["Denomination_route"]
+        else:
+            texte_instruction += "route sans nom"
+        self.label_instruction.configure(text = texte_instruction)
         
     def compute_cross(self, fuv_tr_pre, fuv_tr_suiv):
         #On recup les infos sur les segments precedent et suivant
@@ -290,7 +342,7 @@ class TopLevelParcour():
         co_gps_noeud = []
         co_gps_pre = info_pre['GPS'].copy()
         co_gps_suiv = info_suiv['GPS'].copy()
-        #on identifie quel cote des segment est lié au noeud
+        #on identifie quel cote des segments est lié au noeud
         #(donc on idetifie aussi les co GPS du noeud)
         # et on inverse l'ordre des co GPS des segments si besoin
         # debut de la liste des co GPS d'un segment = le noeud
@@ -382,18 +434,34 @@ class TopLevelParcour():
                         dico_fuv_tr_carte[categorie][troncon].append([x_carte, y_carte])
         return dico_fuv_tr_carte
     
-    def calcul_dist_min(self, dico_fuv_tr_rot):
+    def calcul_norme_min(self, dico_fuv_tr_rot):
         #Determination de l'extrémité d'un segment adjacent la plus proche du noeud
         # selon la norme infini (cf. cours de maths)
         # permet d'avoir la vision la plus large possible sans voir d'autres noeuds
-        dist_min = math.inf
+        norme_min = math.inf
         for categorie in dico_fuv_tr_rot:
             for troncon in dico_fuv_tr_rot[categorie]:
                 co_gps = dico_fuv_tr_rot[categorie][troncon]
-                dist = max(abs(co_gps[-1][0]-co_gps[0][0]),abs(co_gps[-1][1]-co_gps[0][1]))
+                norme = max(abs(co_gps[-1][0]-co_gps[0][0]),abs(co_gps[-1][1]-co_gps[0][1]))
+                if norme < norme_min and norme != 0 :
+                    norme_min = norme
+        return norme_min
+    
+    def calcul_dist_min(self, dico_fuv_tr_adj):
+        #Determination de l'extrémité d'un segment adjacent la plus proche du noeud
+        # selon la norme 2 (cf. cours de maths)
+        # permet de prevoir la vision qu'on aura et les points gps qui seront ou non surement dans la fenetre
+        dist_min = math.inf
+        for categorie in dico_fuv_tr_adj:
+            for troncon in dico_fuv_tr_adj[categorie]:
+                dist = self.distance(dico_fuv_tr_adj[categorie][troncon], 0, -1)
                 if dist < dist_min and dist != 0 :
                     dist_min = dist
         return dist_min
+    
+    def distance(self, co_gps, index1, index2):
+        # distance selon la norme 2 entre 2 points definis par leur index dans une liste de coordonnees
+        return math.sqrt((co_gps[index2][0]-co_gps[index1][0])**2+(co_gps[index2][1]-co_gps[index1][1])**2)
         
 
 if __name__ == "__main__":
