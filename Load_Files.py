@@ -44,7 +44,7 @@ def charger_donnees():
             dico_rues[rue][troncon]["Commune"] = proprietes["commune1"]
             dico_rues[rue][troncon]["Code_postal"] = proprietes["insee1"]
             dico_rues[rue][troncon]["Denomination_route"] = proprietes["denominationroutiere"]
-            dico_rues[rue][troncon]["Longueur"] = proprietes.get("longueurreellechaussee",proprietes["longueurcalculee"])
+            dico_rues[rue][troncon]["Longueur"] = proprietes.get("longueurreellechaussee",0.0)  #ou "longueurcalculee"
             if dico_rues[rue][troncon]["Longueur"] == "":
                 dico_rues[rue][troncon]["Longueur"] = proprietes["longueurcalculee"]
             dico_rues[rue][troncon]["Limitation_vitesse"] = proprietes["limitationvitesse"]
@@ -94,51 +94,6 @@ def charger_donnees():
     #print(rues_adjacentes)
     #print(len(rues_adjacentes))
     return rues_adjacentes,dico_rues
-
-def setup_adjacence_param(rues_adjacentes,dico_rues,largeur_chaussee_m = None ,pente_m = None, revet_chaussee_enl = None ,revet_trot_enl = None ,largeur_trot_max= None):
-    """Réduit le dictionnaire d'adjacence des rues total selon les paramètres de l\'utilisateur donnés par l'application
-
-    Args:
-        rues_adjacentes (dict): dictionnaire d'adjajacence totale des rues keys (FUV,Troncon) val [list](FUV,Troncon)
-        dico_rues (dict): le dictionnaire des toutes les rues avec leurs propriétés
-        largeur_chaussee_m (float, optional): la largeur maximale choisie par l'utilisateur. Defaults to None.
-        pente_m (float, optional): la pente maximale de la rue choisie par l'utilisateur. Defaults to None.
-        revet_chaussee_enl (list, optional): une liste contenant les revetements que ne veut pas l'utilisateur. Defaults to None.
-        revet_trot_enl (list, optional): une liste contenant les revetement des trotoirs que ne veut pas l'utilisateur. Defaults to None.
-        largeur_trot_max (float, optional): la largeur maximale du trotoir que ne veut pas l'utilisateur. Defaults to None.
-
-    Returns:
-        dict: le nouveau dictionnaire d'adjacence des rues
-    """
-    nv_rues_adjacentes = rues_adjacentes
-    for key in rues_adjacentes.keys():
-        FUV = key[0]
-        Troncon = key[1]
-        if largeur_chaussee_m != None and dico_rues[FUV][Troncon]["Largeur"] > largeur_chaussee_m:
-            #possibilité de supprimer aussi les référence de ces tuple (fuv,troncon) dans les listes d'adjacences
-            del nv_rues_adjacentes[(FUV,Troncon)]
-
-        if pente_m != None and dico_rues[FUV][Troncon]["Pente_max"] > pente_m :
-            del nv_rues_adjacentes[(FUV,Troncon)]
-
-        if largeur_trot_max != None and (dico_rues[FUV][Troncon]["Largeur_trottoir_D"] > largeur_trot_max or dico_rues[FUV][Troncon]["Largeur_trottoir_G"] > largeur_trot_max ) :
-            del nv_rues_adjacentes[(FUV,Troncon)]
-
-        if revet_chaussee_enl != None :
-            for revet_chausee in revet_chaussee_enl :
-                if dico_rues[FUV][Troncon]["Revetement_chaussee"] == revet_chausee :
-                    del nv_rues_adjacentes[(FUV,Troncon)]
-
-        if revet_trot_enl != None :
-            for revet_trot in revet_trot_enl :
-                if dico_rues[FUV][Troncon]["Revetement_trottoir_D"] == revet_trot or dico_rues[FUV][Troncon]["Revetement_trottoir_G"] == revet_trot :
-                    del nv_rues_adjacentes[(FUV,Troncon)]
-
-    return nv_rues_adjacentes
-
-
-
-
 
 def give_troncon_nearest_gps(co_gps_user,dico_rues):
     """Trouve le couple troncon + FUV le plus proche des coordonnées gps fournis par l'utilisateur
@@ -199,9 +154,9 @@ def dist_between(start_fuv_troncon, end_fuv_troncon, dico_rues):
     Returns:
         float: la distance à vol d'oiseau en km
     """
-    D = 6371*(math.pi/2 - math.asin(math.sin(dico_rues[end_fuv_troncon]['GPS'][1])*math.sin(dico_rues[start_fuv_troncon]['GPS'][1]) + math.cos(dico_rues[end_fuv_troncon]['GPS'][0]-dico_rues[start_fuv_troncon]['GPS'][0])*math.cos(dico_rues[start_fuv_troncon]['GPS'][1])*math.cos(dico_rues[end_fuv_troncon]['GPS'][1])))
+        D = 6371*(math.pi/2 - math.asin(math.sin(dico_rues[end_fuv_troncon]['GPS'][1])*math.sin(dico_rues[start_fuv_troncon]['GPS'][1]) + math.cos(dico_rues[end_fuv_troncon]['GPS'][0]-dico_rues[start_fuv_troncon]['GPS'][0])*math.cos(dico_rues[start_fuv_troncon]['GPS'][1])*math.cos(dico_rues[end_fuv_troncon]['GPS'][1])))
         
-    return D 
+        return D 
 
 def astar(start_fuv_troncon, end_fuv_troncon, dico_rues): # J'ai pas trouvé de dico dans le bon format : dico d'adjacences par coordonées
     #start et end nodes : tuples
@@ -233,10 +188,9 @@ def astar(start_fuv_troncon, end_fuv_troncon, dico_rues): # J'ai pas trouvé de 
 
 if __name__ == "__main__" :
     adj,rue = charger_donnees()
-    print(adj)
     #print(give_troncon_nearest_gps([4.851479,45.874598],rue))
 
-    #print(give_troncon_nearest_address("25_Allée des Hélianthes_Montanay",rue))
+    print(give_troncon_nearest_address("25_Allée des Hélianthes_Montanay",rue))
     
     """
     for k in adj.keys() :
