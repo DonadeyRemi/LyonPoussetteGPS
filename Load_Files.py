@@ -137,26 +137,7 @@ def setup_adjacence_param(rues_adjacentes,dico_rues,largeur_chaussee_m = None ,p
     return nv_rues_adjacentes
 
 
-def give_pentes_max(dico_rues):
-    """Donne les valeurs min et max parmis l'ensensembles des pentes max, pour configurer le slidder de la fenetre de paramètres
 
-    Args:
-        dico_rues (dict): le dictionnaire des paramètrs des rues
-
-    Returns:
-        tuple :(min,max)
-    """
-    pente_max_min = 60
-    pente_max_max = -30
-    for FUV in dico_rues.keys():
-        for troncon in dico_rues[FUV].keys():
-            if dico_rues[FUV][troncon]["Pente_max"] < pente_max_min :
-                pente_max_min = dico_rues[FUV][troncon]["Pente_max"]
-
-            elif dico_rues[FUV][troncon]["Pente_max"] > pente_max_max :
-                pente_max_max = dico_rues[FUV][troncon]["Pente_max"]
-
-    return (pente_max_min,pente_max_max)
 
 
 def give_troncon_nearest_gps(co_gps_user,dico_rues):
