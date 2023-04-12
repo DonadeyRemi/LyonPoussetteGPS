@@ -154,9 +154,9 @@ def dist_between(start_fuv_troncon, end_fuv_troncon, dico_rues):
     Returns:
         float: la distance à vol d'oiseau en km
     """
-        D = 6371*(math.pi/2 - math.asin(math.sin(dico_rues[end_fuv_troncon]['GPS'][1])*math.sin(dico_rues[start_fuv_troncon]['GPS'][1]) + math.cos(dico_rues[end_fuv_troncon]['GPS'][0]-dico_rues[start_fuv_troncon]['GPS'][0])*math.cos(dico_rues[start_fuv_troncon]['GPS'][1])*math.cos(dico_rues[end_fuv_troncon]['GPS'][1])))
+    D = 6371*(math.pi/2 - math.asin(math.sin(dico_rues[end_fuv_troncon]['GPS'][1])*math.sin(dico_rues[start_fuv_troncon]['GPS'][1]) + math.cos(dico_rues[end_fuv_troncon]['GPS'][0]-dico_rues[start_fuv_troncon]['GPS'][0])*math.cos(dico_rues[start_fuv_troncon]['GPS'][1])*math.cos(dico_rues[end_fuv_troncon]['GPS'][1])))
         
-        return D 
+    return D 
 
 def astar(start_fuv_troncon, end_fuv_troncon, dico_rues): # J'ai pas trouvé de dico dans le bon format : dico d'adjacences par coordonées
     #start et end nodes : tuples
