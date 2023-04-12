@@ -164,11 +164,14 @@ class MainWindow():
     def load_all_datas(self):
         self.carrefour_adjacences,self.dico_rues = Load_Files.charger_donnees()
 
+        self.min_max_slidder_pente_max = Load_Files.give_pentes_max(self.dico_rues)
+
 
 
 class TopLevelParams():
     def __init__(self,mainwindow):
         self.toplevel_params = tk.Toplevel(mainwindow)
+        self.root_wind = mainwindow
         
         self.init_widget()
         self.toplevel_params.mainloop()
@@ -179,7 +182,7 @@ class TopLevelParams():
         self.slidder_width_road.pack(fill=tk.X)
 
         self.var_slope_max = tk.DoubleVar(value=4.0)
-        self.slidder_slope_max = tk.Scale(self.toplevel_params,label="Pente maximale",from_=0,to=12,resolution=0.1,tickinterval=1.0,orient=tk.HORIZONTAL,variable=self.var_slope_max)
+        self.slidder_slope_max = tk.Scale(self.toplevel_params,label="Pente maximale",from_=self.root_wind.min_max_slidder_pente_max[0],to=self.root_wind.min_max_slidder_pente_max[1],resolution=0.1,tickinterval=1.0,orient=tk.HORIZONTAL,variable=self.var_slope_max)
         self.slidder_slope_max.pack(fill=tk.X)
 
 
