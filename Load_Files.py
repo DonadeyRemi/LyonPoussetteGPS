@@ -158,32 +158,58 @@ def dist_between(start_fuv_troncon, end_fuv_troncon, dico_rues):
         
     return D 
 
-def astar(start_fuv_troncon, end_fuv_troncon, dico_rues): # J'ai pas trouvé de dico dans le bon format : dico d'adjacences par coordonées
-    #start et end nodes : tuples
-    queue = PriorityQueue() #from queue import PriorityQueue
-    queue.put(start_fuv_troncon,0)
-    path = {start_fuv_troncon : start_fuv_troncon}
-    cost = {start_fuv_troncon : 0}
-    
-    
-    while not queue.empty():
-        current_node = queue.get() 
-        
-        if current_node == end_fuv_troncon :
-            return final_dist, path
-            print(final_dist, path)
-            break
-            
-        for next_fuv_troncon in dico_rues[current_node]: #pas bon
-            new_cost = cost[current_node] + dico_rues[current_node][next_fuv_troncon]
-            if next_fuv_troncon not in cost or new_cost < cost[next_fuv_troncon]:
-                cost[next_fuv_troncon]= new_cost
-                priority = new_cost + dist_between(next_fuv_troncon,end_fuv_troncon,dico_rues)
-                queue.put(next_fuv_troncon, priority)
-                path[next_fuv_troncon] = current_node
-                
-    return path, cost
+def distance(start_fuv_troncon, end_fuv_troncon, dico_rues):
+    """
+    Calcule la distance en ligne "droite", distance à vol d'oisieau entre ces 2 identifiants de rues
 
+    Args:
+        start_fuv_troncon (tuple): identifiant (FUV,troncon) correspondant au premier point
+        end_fuv_troncon (tuple): idientifiant (FUV,troncon) correspondant au deuxième point
+        dico_rues (dict): le dictionnaire de tous les identifiants (FUV,troncon) avec leurs propriétés et donc les coordonnées GPS
+    Returns:
+        float: la distance
+    """
+    fuv_start= start_fuv_troncon[0]
+    troncon_start = start_fuv_troncon[1]
+    fuv_end= end_fuv_troncon[0]
+    troncon_end = end_fuv_troncon[1]
+    
+    D = 6371*(math.pi/2 - math.asin(math.sin(dico_rues[fuv_end][troncon_end]['GPS'][0][1])*math.sin(dico_rues[fuv_start][troncon_start]['GPS'][0][1]) + math.cos(dico_rues[fuv_end][troncon_end]['GPS'][0][0]-dico_rues[fuv_start][troncon_start]['GPS'][0][0])*math.cos(dico_rues[fuv_start][troncon_start]['GPS'][0][1])*math.cos(dico_rues[fuv_end][troncon_end]['GPS'][0][1])))
+    return D
+
+
+def a_star(start, goal, rues_adjacentes, dico_rues):
+    queue = PriorityQueue()  # Créer une file de priorité pour les noeuds à explorer
+    queue.put((0, start))  # Ajouter le tuple (pondération, noeud) à la file 
+    came_from = {}  # Créer un dictionnaire pour stocker les parents de chaque noeud exploré
+    cost_so_far = {}  # Créer un dictionnaire pour stocker le coût pour atteindre chaque noeud exploré
+    came_from[start] =  None # Le noeud de départ n'a pas de parent
+    cost_so_far[start] = 0  # Le coût pour atteindre le noeud de départ est 0
+
+    while not queue.empty():
+        current = queue.get()[1] #l'indice zéro est celui de priorité
+        print(current)
+        # Récupérer le noeud avec la plus petite priorité dans la file
+        if current == goal: 
+            break
+
+        for next_node in rues_adjacentes[current]:# On récupère le tuple coordonées des adj : (lat,lon)
+            new_cost = cost_so_far[current] + distance(current, next_node,dico_rues)  # Calculer le coût pour atteindre le voisin en passant par le noeud actuel
+            if next_node not in cost_so_far.keys() or  new_cost < cost_so_far[next_node]:
+                cost_so_far[next_node] = new_cost  # Mettre à jour le coût pour atteindre le voisin
+                priority = new_cost + distance(next_node, goal,dico_rues)  # Calculer la priorité pour le voisin
+                queue.put((priority, next_node))  # Ajouter le voisin à la file avec sa nouvelle priorité
+                came_from[next_node] = current  # Stocker le noeud actuel comme parent du voisin exploré
+    print(came_from, '\n\n')
+        
+    
+    # Pour avoir le parcourt du départ à l'arrivée
+    path = [goal]
+    while start not in path:
+        path.append(came_from[path[-1]])
+    path.reverse()
+        
+    return ("Le chemin le plus court est : ", path,', Pour un distance de ' ,cost_so_far[goal])
 
 
 if __name__ == "__main__" :
