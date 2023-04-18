@@ -23,8 +23,10 @@ class MainWindow():
         
         #itineraire fictif pour test fenetre trajet
         #self.itineraire = [('22416', 'T54924'),('37324', 'T54925'),('37324', 'T54926'),('36078', 'T23765')]
-        self.itineraire = [('33788','T27222'),('33787','T27233'),('33787','T35503'),('33785','T35505'),('33786','T27243'),('33793','T27247'),('33792','T27266'),('33796','T27274'),('33796','T27275'),('33794','T27269')]
-        self.itineraire.reverse()
+        #self.itineraire = [('33788','T27222'),('33787','T27233'),('33787','T35503'),('33785','T35505'),('33786','T27243'),('33793','T27247'),('33792','T27266'),('33796','T27274'),('33796','T27275'),('33794','T27269')]
+        self.itineraire = []
+        self.dist_trajet = 0
+        #self.itineraire.reverse()
 
     def initWidget(self):
         self.loading_label_1.destroy()
@@ -135,6 +137,8 @@ class MainWindow():
         Args:
             event (dict): the tk event object return after the user event
         """
+        # point de depart et d'arrivee fictifs pour tester l'algo de recherche d'itineraire
+        self.itineraire, self.dist_trajet = Load_Files.a_star(('33788','T27222'),('27503','T45302'),self.carrefour_adjacences, self.dico_rues) #!!!
         #on cache la frame principale et affiche la frame itineraire
         self.frame_princ.pack_forget()
         self.var_prop_trajet.set(f"Votre Trajet\n {self.var_entry_start.get()} vers {self.var_entry_end.get()}")
@@ -212,6 +216,9 @@ class TopLevelParcour():
         
         self.width_canvas = 400
         self.height_canvas = 400
+        
+        self.label_instruction = tk.Label(self.toplevel_parcour, text = "Instructions", font = "Calibri 16", height=2, wraplength=400)
+        self.label_instruction.pack(side=tk.TOP)
         
         self.main_canvas = tk.Canvas(self.toplevel_parcour,width = self.width_canvas, height = self.height_canvas,bg='blue')
         self.main_canvas.pack(side=tk.TOP)
