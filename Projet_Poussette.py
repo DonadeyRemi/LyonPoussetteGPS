@@ -137,8 +137,41 @@ class MainWindow():
         Args:
             event (dict): the tk event object return after the user event
         """
+        # on récupère les les valeurs dans les champs d'entrée
+        depart_FUV_troncon = ('33788','T27222')
+        arrivee_fuv_troncon = ('27503','T45302')
+        
+        depart = self.var_entry_start.get()
+        arrivee = self.var_entry_end.get()
+
+        try :
+            coord_depart_lat = float(depart.split(',')[0])
+            coord_depart_long = float(depart.split(',')[1])
+
+            depart_FUV_troncon = Load_Files.give_troncon_nearest_gps((coord_depart_long,coord_depart_lat),self.dico_rues)
+
+        except Exception as e :
+            print(e)
+
+        else :
+            addresse_depart = depart
+
+        try : 
+            coord_fin_lat = float(arrivee.split(',')[0])
+            coord_fin_long = float(arrivee.split(',')[1])
+
+            arrivee_fuv_troncon = Load_Files.give_troncon_nearest_gps((coord_fin_long,coord_fin_lat),self.dico_rues)
+
+        except Exception as e :
+            print(e)
+
+        else :
+            addresse_fin = arrivee
+        
+        print(depart_FUV_troncon)
+        print(arrivee_fuv_troncon)
         # point de depart et d'arrivee fictifs pour tester l'algo de recherche d'itineraire
-        self.itineraire, self.dist_trajet = Load_Files.a_star(('33788','T27222'),('27503','T45302'),self.carrefour_adjacences, self.dico_rues) #!!!
+        self.itineraire, self.dist_trajet = Load_Files.a_star(depart_FUV_troncon,arrivee_fuv_troncon,self.carrefour_adjacences, self.dico_rues) #!!!
         #on cache la frame principale et affiche la frame itineraire
         self.frame_princ.pack_forget()
         self.var_prop_trajet.set(f"Votre Trajet\n {self.var_entry_start.get()} vers {self.var_entry_end.get()}")

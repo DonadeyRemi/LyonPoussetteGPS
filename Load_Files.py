@@ -5,6 +5,12 @@ Created on Mon Mar 27 15:20:19 2023
 @author: timhu
 """
 
+"""
+coord min : 4.6856,45.5570
+coord max : 5.1356,45.9401
+"""
+
+
 import json
 import math
 from queue import PriorityQueue
@@ -188,13 +194,13 @@ def give_troncon_nearest_gps(co_gps_user,dico_rues):
         dict: {(FUV,troncon) : [co_gps]}
     """
     d_min = 2e+7 #ici on va comparer les distance carré entre elles (et la distance maximale étant la circonsphérence de la terre)
-    id_rue_troncon = {(0,0) : co_gps_user}
+    id_rue_troncon = (0,0)
     for fuv in dico_rues.keys():
         for troncon in dico_rues[fuv].keys():
             for co_gps in dico_rues[fuv][troncon]['GPS'] :
                 d = dist_lat_lon_deg(co_gps[1],co_gps[0],co_gps_user[1],co_gps_user[0])
                 if d < d_min :
-                    id_rue_troncon = {(fuv,troncon) : co_gps}
+                    id_rue_troncon = (fuv,troncon)
                     d_min = d
 
     return id_rue_troncon
@@ -208,17 +214,41 @@ def give_troncon_nearest_address(adresse,dico_rues):
     Returns:
         dict: le couple d'identifiant le plus proche {(fuv,troncon) : [co_gps]}
     """
+    commune_trouvee = False
+    voie_trouvee = False
+    db_trouvee = False
+
     nom_voie = adresse.split("_")[1]
     numero = adresse.split("_")[0]
     commune = adresse.split("_")[2]
-    id_rue_troncon = {(0,0) : [0,0]} #a changer mais retourne ca si pas trouvé
+    #id_rue_troncon = {(0,0) : [0,0]} #a changer mais retourne ca si pas trouvé
+    id_rue_troncon = (0,0)
     for fuv in dico_rues.keys():
         for troncon in dico_rues[fuv].keys():
             try : 
-                if dico_rues[fuv][troncon]["Commune"] == commune and dico_rues[fuv][troncon]["Nom"] == nom_voie :
-                    id_rue_troncon = {(fuv,troncon) : dico_rues[fuv][troncon]['GPS'][0]} # ici je vais retourner la première co GPS mais à voir plus tard si on essaie de prendre la plus proche avec le numéro
+                if dico_rues[fuv][troncon]["Commune"] == commune :
+                    commune_trouvee = True
+                    fuv_troncon_commune = (fuv,troncon)
             except KeyError as e :
-                print(f"[KeyError] , la clé commune ou nom n'existe pas pour cet identifiant {(fuv,troncon)}")
+                print(f"[KeyError] , la clé commune n'existe pas pour cet identifiant {(fuv,troncon)}")
+    
+            try :
+                if dico_rues[fuv][troncon]["Nom"] == nom_voie :
+                    voie_trouvee = True
+            
+            except KeyError as e :
+                print(f"[KeyError] , la clé Nom n'existe pas pour cet identifiant {(fuv,troncon)}")
+
+            if voie_trouvee and commune_trouvee :
+                id_rue_troncon = (fuv,troncon)
+                db_trouvee = True
+    
+    if db_trouvee == False and commune_trouvee :
+        id_rue_troncon = fuv_troncon_commune 
+    
+    else :
+        print("La commune n'est pas dans le grand lyon")
+    
     return id_rue_troncon 
 
 def dist_lat_lon_deg(start_lat,start_lon,end_lat,end_lon): 
