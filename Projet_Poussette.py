@@ -63,19 +63,32 @@ class MainWindow():
         self.frame_opt = tk.Frame(self.frame_princ,padx=5,pady=5)
 
         self.choice_poussette = tk.IntVar()
-        self.check_button_poussette = tk.Checkbutton(self.frame_opt,bg='gray',fg='black',text="Poussette/Fauteil",onvalue=True,offvalue=False,variable=self.choice_poussette)
+        self.check_button_poussette = tk.Checkbutton(self.frame_opt,
+                                                     bg = 'gray', fg = 'black', anchor = 'w',
+                                                     text = "  Poussette/Fauteil",
+                                                     onvalue = True, offvalue = False,
+                                                     variable = self.choice_poussette)
         self.check_button_poussette.pack(side=tk.TOP,fill=tk.X)
 
         self.choice_bike = tk.IntVar()
-        self.check_button_bike = tk.Checkbutton(self.frame_opt,bg='gray',fg='black',text="Vélo",onvalue=True,offvalue=False,variable=self.choice_bike)
+        self.check_button_bike = tk.Checkbutton(self.frame_opt,
+                                                bg='gray', fg = 'black', anchor = 'w',
+                                                text = "          Vélo", onvalue=True,
+                                                offvalue = False, variable = self.choice_bike)
         self.check_button_bike.pack(side=tk.TOP,fill=tk.X)
 
         self.choice_voiture = tk.IntVar()
-        self.check_button_voiture = tk.Checkbutton(self.frame_opt,bg='gray',fg='black',text="Voiture",onvalue=True,offvalue=False,variable=self.choice_voiture)
+        self.check_button_voiture = tk.Checkbutton(self.frame_opt,
+                                                   bg = 'gray',fg = 'black', text = "        Voiture",
+                                                   onvalue = True, anchor = 'w',
+                                                   offvalue=False, variable = self.choice_voiture)
         self.check_button_voiture.pack(side=tk.TOP,fill=tk.X)
 
         self.choice_foot = tk.IntVar()
-        self.check_button_foot = tk.Checkbutton(self.frame_opt,bg='gray',fg='black',text="Pied",onvalue=True,offvalue=False,variable=self.choice_foot)
+        self.check_button_foot = tk.Checkbutton(self.frame_opt,
+                                                bg='gray', fg = 'black', anchor = 'w',
+                                                text="          Pied", onvalue = True, 
+                                                offvalue = False, variable = self.choice_foot)
         self.check_button_foot.pack(side=tk.TOP,fill=tk.X)
 
         self.frame_opt.pack(side=tk.TOP,fill=tk.X)
@@ -260,10 +273,12 @@ class TopLevelParcour():
 
         self.button_past_step = tk.Button(self.frame_bt,text="Etape Précédente",bg='gray',fg='black',relief='flat')
         self.button_past_step.bind('<Button-1>', self.precedent)
+        self.toplevel_parcour.bind('<Left>', self.precedent)
         self.button_past_step.grid(column=0,row=0,padx=5,pady=5)
-
+                
         self.button_forward_step = tk.Button(self.frame_bt,text="Etape Suivante",bg='gray',fg='black',relief='flat')
         self.button_forward_step.bind('<Button-1>', self.suivant)
+        self.toplevel_parcour.bind('<Right>', self.suivant)
         self.button_forward_step.grid(column=2,row=0,padx=5,pady=5)
 
         self.frame_bt.pack()
