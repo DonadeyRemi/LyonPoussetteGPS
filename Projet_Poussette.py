@@ -6,7 +6,12 @@ import math
 from tkinter.ttk import Separator
 from tkinter import messagebox
 import Load_Files
-
+import pandas as pd
+import geopandas as gpd
+import matplotlib.pyplot as plt
+import json
+from shapely.geometry import Polygon,LineString,Point
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 class MainWindow():
     def __init__(self) :
@@ -31,10 +36,63 @@ class MainWindow():
     def initWidget(self):
         self.loading_label_1.destroy()
         self.loading_label_2.destroy()
-        self.root.geometry("600x600")
+        self.root.geometry("1000x700")
         
-        self.canvas = tk.Canvas(self.root,bg="gray")
-        self.canvas.pack(side = tk.LEFT,fill=tk.BOTH)
+        #lecture des donnees des communes pour les placer sur la carte
+        with open("commune_grand_lyon.geojson",'r') as file :
+            data_commune_json = json.load(file)
+            
+        with open("cours_eau.geojson",'r') as file :
+            data_eau_json = json.load(file)
+        
+        
+        polygones = []
+        for dico_commune in data_commune_json["features"] :
+            liste_co_gps = dico_commune["geometry"]["coordinates"][0]
+            lat = []
+            long = []
+            for co in liste_co_gps :
+                lat.append(co[1])
+                long.append(co[0])
+                
+            polygones.append(Polygon(zip(long, lat)))
+            
+        """
+        eau_lines = []
+        for dico_cours_eau in data_eau_json["features"] :
+            liste_coord = dico_cours_eau["geometry"]["coordinates"]
+            if dico_cours_eau["geometry"]["type"] == "MultiLineString" :
+                for line in range(len(liste_coord)):
+                    lat = []
+                    long = []
+                    for co_gps in range(len(line)):
+                        lat.append(co_gps[1])
+                        long.append(co_gps[0])
+                        
+                    eau_lines.append(LineString(zip(long,lat)))
+                    
+            elif dico_cours_eau["geometry"]["type"] == "LineString" :
+                lat = []
+                long = []
+                for co_gps in range(len(liste_coord)):
+                    lat.append(co_gps[1])
+                    long.append(co_gps[0])
+                    
+                eau_lines.append(LineString(zip(long,lat)))
+        """            
+            
+        data_commune = gpd.GeoDataFrame(geometry=polygones)
+        #data_eau = gpd.GeoDataFrame(geometry=eau_lines)
+            
+        # creation de la figure matplotlib 
+        self.fig,self.ax = plt.subplots(figsize=(8,8))
+        self.ax = data_commune.boundary.plot(ax=self.ax,color="black")
+        #self.ax = data_eau.plot(ax=self.ax)
+        
+        self.canvas = FigureCanvasTkAgg(self.fig, master=self.root)  # A tk.DrawingArea.
+        self.canvas.draw()
+        self.canvas.get_tk_widget().pack(side=tk.LEFT, fill=tk.Y)
+        
 
         separator_canvas = Separator(self.root,orient=tk.VERTICAL)
         separator_canvas.pack(side=tk.LEFT,fill=tk.Y)
@@ -185,11 +243,30 @@ class MainWindow():
         print(arrivee_fuv_troncon)
         # point de depart et d'arrivee fictifs pour tester l'algo de recherche d'itineraire
         self.itineraire, self.dist_trajet = Load_Files.a_star(depart_FUV_troncon,arrivee_fuv_troncon,self.carrefour_adjacences, self.dico_rues) #!!!
+
+        print(self.dico_rues[self.itineraire[0][0]][self.itineraire[0][1]]['GPS'])
         #on cache la frame principale et affiche la frame itineraire
         self.frame_princ.pack_forget()
         self.var_prop_trajet.set(f"Votre Trajet\n {self.var_entry_start.get()} vers {self.var_entry_end.get()}")
         self.frame_trajet.pack(fill=tk.Y)
 
+        # on appelle la fonction qui affiche la carte principale
+        self.show_large_map()
+
+    def show_large_map(self):
+        co_trajet = []
+        for fuv_rue in self.itineraire :
+            co_gps_liste = self.dico_rues[fuv_rue[0]][fuv_rue[1]]['GPS']
+            for co_gps in co_gps_liste :
+                co_trajet.append(Point(co_gps[0],co_gps[1]))            
+
+        geo_trajet_data = gpd.GeoDataFrame(geometry=[LineString(co_trajet)])
+                    
+        #mise a jour de la carte 
+        geo_trajet_data.plot(ax=self.ax)
+        self.canvas.draw()
+
+    
     def bouton_change_iti(self,event):
         msg_user = messagebox.askyesno("Changer d'itineraire ?","Voulez vous vraiment changer d'itinéraire ?\n Celui-ci sera perdu")
         if msg_user == True :
