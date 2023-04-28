@@ -15,6 +15,7 @@ import json
 import math
 from queue import PriorityQueue
 
+
 f_point_debouche = "point_debouche.geojson"
 
 def charger_donnees():
