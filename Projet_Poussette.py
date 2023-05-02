@@ -3,16 +3,22 @@
 
 import tkinter as tk
 import math
+from tkinter import ttk
 from tkinter.ttk import Separator
 from tkinter import messagebox
 import Load_Files
-import pandas as pd
+
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
+<<<<<<< HEAD
 import json
 from shapely.geometry import Polygon,LineString,Point
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg,NavigationToolbar2Tk)
+=======
+from shapely.geometry import LineString,Point
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+>>>>>>> e6dffbcec60c8b230138c88aa82c400e89c80e8c
 
 class MainWindow():
     def __init__(self) :
@@ -23,22 +29,30 @@ class MainWindow():
         self.loading_label_1.pack(anchor = tk.CENTER)
         self.loading_label_2 = tk.Label(self.root, text = "Veuillez patienter", font = "Calibri 13")
         self.loading_label_2.pack(anchor = tk.CENTER)
+        self.progress_bar = ttk.Progressbar(self.root, orient = tk.HORIZONTAL, length = 100, mode = 'determinate')
+        self.progress_bar.pack()
         self.root.title("Lyonyroule")
-        # la fonction load_all_datas est lancée au bout de 100ms après le démarage (cf. ligne 679)
+        # la fonction load_all_datas est lancée au bout de 100ms après le démarage (cf. ligne 679 (plus à jour))
         # la fonction initWidget est appelée à la fin de la fonction load_all_datas
         
         #itineraire fictif pour test fenetre trajet
         #self.itineraire = [('22416', 'T54924'),('37324', 'T54925'),('37324', 'T54926'),('36078', 'T23765')]
         #self.itineraire = [('33788','T27222'),('33787','T27233'),('33787','T35503'),('33785','T35505'),('33786','T27243'),('33793','T27247'),('33792','T27266'),('33796','T27274'),('33796','T27275'),('33794','T27269')]
         self.itineraire = []
+        self.depart = (None,None)
+        self.arrivee = (None,None)
         self.dist_trajet = 0
+        self.saisie_user_start = ""
+        self.saisie_user_end = ""
         #self.itineraire.reverse()
 
     def initWidget(self):
         self.loading_label_1.destroy()
         self.loading_label_2.destroy()
-        self.root.geometry("1000x700")
+        self.progress_bar.destroy()
+        self.root.geometry("1000x600")
         
+<<<<<<< HEAD
         #lecture des donnees des communes pour les placer sur la carte
         with open("commune_grand_lyon.geojson",'r') as file :
             data_commune_json = json.load(file)
@@ -59,23 +73,33 @@ class MainWindow():
         #data_commune = gpd.GeoDataFrame(geometry=polygones)
             
         # creation de la figure matplotlib 
+=======
+         # creation de la figure matplotlib 
+>>>>>>> e6dffbcec60c8b230138c88aa82c400e89c80e8c
         self.fig,self.ax = plt.subplots(figsize=(8,8))
         #mise en place du fond de carte
-        image = mpimg.imread("fond_carte1.png")
+        image = mpimg.imread(r"C:/Users/timhu/Documents/1_Scolaire/INSA_2A/Informatique/Projet/Donnees_projet/fond_carte1.png")
         height, width, channels = image.shape
         self.ax.imshow(image,extent = [4.56, 5.2, 45.500, 46.03])
+<<<<<<< HEAD
         
         #data_commune.boundary.plot(ax=self.ax,color="black",linewidth=1.0)
         
         
+=======
+
+        # data_commune.boundary.plot(ax=self.ax,color="black",linewidth=1.0)
+
+
+>>>>>>> e6dffbcec60c8b230138c88aa82c400e89c80e8c
         self.ax.axis('off')
-        
+
         self.canvas = FigureCanvasTkAgg(self.fig, master=self.root)  # A tk.DrawingArea.
         self.canvas.draw()
         self.toolbar = NavigationToolbar2Tk(self.canvas,self.root)
         self.toolbar.update()
         self.canvas.get_tk_widget().pack(side=tk.LEFT, fill=tk.Y)
-        
+
 
         separator_canvas = Separator(self.root,orient=tk.VERTICAL)
         separator_canvas.pack(side=tk.LEFT,fill=tk.Y)
@@ -85,16 +109,23 @@ class MainWindow():
 
         self.frame_dest = tk.Frame(self.frame_princ,padx=5,pady=5)
 
-        self.var_entry_start = tk.StringVar(value="Départ")
-        self.start_entry = tk.Entry(self.frame_dest,bg='gray',fg='black',textvariable=self.var_entry_start)
-        self.start_entry.pack(side=tk.TOP,fill=tk.X)
-        self.start_entry.bind("<Button-1>",self.effacer_prop_start)
-
-        self.var_entry_end = tk.StringVar(value="Arrivée")
-        self.end_entry = tk.Entry(self.frame_dest,bg="gray",fg='black',textvariable=self.var_entry_end)
-        self.end_entry.pack(fill=tk.X)
-        self.end_entry.bind("<KeyPress-Return>",self.start_research)
-        self.end_entry.bind("<Button-1>",self.effacer_prop_end)
+        self.liste_depart = []
+        self.var_entry_start = tk.StringVar(value = "Départ")
+        self.start_selection = ttk.Combobox(self.frame_dest, textvariable=self.var_entry_start, values = self.liste_depart, width = 80, foreground = "black")
+        self.start_selection.bind("<KeyRelease>",self.get_entry_start)
+        self.start_selection.bind("<Button-1>",self.effacer_start)
+        self.start_selection.bind("<KeyRelease-Return>", self.down_start)
+        self.start_selection.bind("<<ComboboxSelected>>", self.choose_start)
+        self.start_selection.pack(side=tk.TOP, anchor = tk.N, fill=tk.X)
+        
+        self.liste_arrivee = []
+        self.var_entry_end = tk.StringVar(value = "Arrivée")
+        self.end_selection = ttk.Combobox(self.frame_dest, textvariable=self.var_entry_end, values = self.liste_arrivee , foreground = "black")
+        self.end_selection.bind("<KeyRelease>",self.get_entry_end)
+        self.end_selection.bind("<Button-1>",self.effacer_end)
+        self.end_selection.bind("<KeyRelease-Return>", self.down_end)
+        self.end_selection.bind("<<ComboboxSelected>>", self.choose_end)
+        self.end_selection.pack(side=tk.TOP,anchor = tk.N, fill=tk.X)
 
         self.frame_dest.pack(side=tk.TOP,fill=tk.X)
 
@@ -105,10 +136,10 @@ class MainWindow():
 
         self.choice_poussette = tk.IntVar()
         self.check_button_poussette = tk.Checkbutton(self.frame_opt,
-                                                     bg = 'gray', fg = 'black', anchor = 'w',
-                                                     text = "  Poussette/Fauteil",
-                                                     onvalue = True, offvalue = False,
-                                                     variable = self.choice_poussette)
+                                                             bg = 'gray', fg = 'black', anchor = 'w',
+                                                             text = "  Poussette/Fauteil",
+                                                             onvalue = True, offvalue = False,
+                                                             variable = self.choice_poussette) 
         self.check_button_poussette.pack(side=tk.TOP,fill=tk.X)
 
         self.choice_bike = tk.IntVar()
@@ -172,11 +203,101 @@ class MainWindow():
     def loop(self):
         self.root.mainloop()
 
-    def effacer_prop_start(self,event):
-        self.var_entry_start.set("")
-
-    def effacer_prop_end(self,event):
-        self.var_entry_end.set("")
+    def get_entry_start(self, event):
+        if event.widget.get() != self.saisie_user_start and event.widget.get() != "":
+            self.saisie_user_start = event.widget.get()
+            numero, rue, commune, centre = Load_Files.gestion_saisie(self.saisie_user_start, list(self.dico_adresses_communes.keys()))
+            self.liste_depart = Load_Files.give_troncon_address(numero, rue, commune, centre, self.dico_adresses_num, self.dico_adresses_rues, self.dico_adresses_communes)
+            # rajouter option si len(self.liste_depart) == 1 (choose_start ou down_start)
+            self.start_selection.configure(values = self.liste_depart)
+        self.start_selection.configure(foreground = "red")
+    
+    def down_start(self, event):
+        if event.widget.get() != self.saisie_user_start and event.widget.get() != "":
+            self.saisie_user_start = event.widget.get()
+            numero, rue, commune, centre = Load_Files.gestion_saisie(self.saisie_user_start, list(self.dico_adresses_communes.keys()))
+            self.liste_depart = Load_Files.give_troncon_address(numero, rue, commune, centre, self.dico_adresses_num, self.dico_adresses_rues, self.dico_adresses_communes)
+            self.start_selection.configure(values = self.liste_depart)
+        self.start_selection.event_generate('<Down>',when="tail")
+     
+    def choose_start(self, event):
+        self.start_selection.configure(foreground = "green")
+        choix = event.widget.get().split(" ")
+        a_suppr = []
+        for i in range(len(choix)):
+            if choix[i] == "" or choix[i] == " ":
+                a_suppr.append(i)
+        a_suppr.reverse()
+        for i in a_suppr:
+            choix.pop(i)
+        if len(choix) == 2 and choix[-1] == "centre":
+            print("centre")
+            self.depart = ("centre","centre")
+        else : 
+            numero = choix.pop(0)
+            commune = choix.pop(-1)
+            rue = ""
+            for i in range(len(choix)):
+                rue += choix[i]
+                if i < len(choix)-1:
+                        rue += " "
+            co_gps = self.dico_adresses_num[numero][rue][commune]
+            self.depart = Load_Files.give_troncon_nearest_gps(co_gps, self.dico_rues)
+        
+        print()
+        print(self.depart)
+        print()
+    
+    def effacer_start(self,event):
+        if self.start_selection.get() == "Départ":
+            self.start_selection.set("")
+            
+    def get_entry_end(self, event):
+        if event.widget.get() != self.saisie_user_end and event.widget.get() != "":
+            self.saisie_user_end = event.widget.get()
+            self.liste_arrivee = Load_Files.give_troncon_address(self.saisie_user_end, self.dico_adresses_num, self.dico_adresses_rues, self.l_communes)
+            # rajouter option si len(self.liste_end) == 1 (choose_end ou down_end)
+            self.end_selection.configure(values = self.liste_arrivee)
+        self.end_selection.configure(foreground = "red")
+    
+    def down_end(self, event):
+        if event.widget.get() != self.saisie_user_end and event.widget.get() != "":
+            self.saisie_user_end = event.widget.get()
+            self.liste_arrivee = Load_Files.give_troncon_address(self.saisie_user_end, self.dico_adresses_num, self.dico_adresses_rues, self.l_communes)
+            self.end_selection.configure(values = self.liste_arrivee)
+        self.end_selection.event_generate('<Down>',when="tail")
+    
+    def choose_end(self, event):
+        self.end_selection.configure(foreground = "green")
+        choix = event.widget.get().split(" ")
+        a_suppr = []
+        for i in range(len(choix)):
+            if choix[i] == "" or choix[i] == " ":
+                a_suppr.append(i)
+        a_suppr.reverse()
+        for i in a_suppr:
+            choix.pop(i)
+        if len(choix) == 2 and choix[-1] == "centre":
+            print("centre")
+            self.arrivee = ("centre","centre")
+        else : 
+            numero = choix.pop(0)
+            commune = choix.pop(-1)
+            rue = ""
+            for i in range(len(choix)):
+                rue += choix[i]
+                if i < len(choix)-1:
+                        rue += " "
+            co_gps = self.dico_adresses_num[numero][rue][commune]
+            self.arrivee = Load_Files.give_troncon_nearest_gps(co_gps, self.dico_rues)
+        
+        print()
+        print(self.arrivee)
+        print()
+    
+    def effacer_end(self,event):
+        if self.end_selection.get() == "Arrivée":
+            self.end_selection.set("")
 
     def bouton_param_av(self,event):
         print("Vous avez cliquez sur le boutons des parametres avancé")
@@ -184,58 +305,25 @@ class MainWindow():
         print(f"Ville d'arrivee {self.var_entry_end.get()}")
         print(f"Choix Poussette {self.choice_poussette.get()}")
 
-        dialog_params_av = TopLevelParams(self.root)
+        self.dialog_params_av = TopLevelParams(self.root)
 
     def start_research(self,event):
         """Fonction callback du bouton de calcul de l'itineraire, il lance la recherche de l'itineraire
         Args:
             event (dict): the tk event object return after the user event
         """
-        # on récupère les les valeurs dans les champs d'entrée
-        depart_FUV_troncon = ('33788','T27222')
-        arrivee_fuv_troncon = ('27503','T45302')
-        
-        depart = self.var_entry_start.get()
-        arrivee = self.var_entry_end.get()
-
-        try :
-            coord_depart_lat = float(depart.split(',')[0])
-            coord_depart_long = float(depart.split(',')[1])
-
-            depart_FUV_troncon = Load_Files.give_troncon_nearest_gps((coord_depart_long,coord_depart_lat),self.dico_rues)
-
-        except Exception as e :
-            print(e)
-
+        if self.depart != (None,None) and self.arrivee != (None,None):
+            self.itineraire, self.dist_trajet = Load_Files.a_star(self.depart,self.arrivee,self.carrefour_adjacences, self.dico_rues)
+            print(self.dico_rues[self.itineraire[0][0]][self.itineraire[0][1]]['GPS'])
+            #on cache la frame principale et affiche la frame itineraire
+            self.frame_princ.pack_forget()
+            self.var_prop_trajet.set(f"Votre Trajet\n {self.var_entry_start.get()} vers {self.var_entry_end.get()}")
+            self.frame_trajet.pack(fill=tk.Y)
+            # on appelle la fonction qui affiche la carte principale
+            self.show_large_map()
         else :
-            addresse_depart = depart
-
-        try : 
-            coord_fin_lat = float(arrivee.split(',')[0])
-            coord_fin_long = float(arrivee.split(',')[1])
-
-            arrivee_fuv_troncon = Load_Files.give_troncon_nearest_gps((coord_fin_long,coord_fin_lat),self.dico_rues)
-
-        except Exception as e :
-            print(e)
-
-        else :
-            addresse_fin = arrivee
-        
-        print(depart_FUV_troncon)
-        print(arrivee_fuv_troncon)
-        # point de depart et d'arrivee fictifs pour tester l'algo de recherche d'itineraire
-        self.itineraire, self.dist_trajet = Load_Files.a_star(depart_FUV_troncon,arrivee_fuv_troncon,self.carrefour_adjacences, self.dico_rues) #!!!
-
-        print(self.dico_rues[self.itineraire[0][0]][self.itineraire[0][1]]['GPS'])
-        #on cache la frame principale et affiche la frame itineraire
-        self.frame_princ.pack_forget()
-        self.var_prop_trajet.set(f"Votre Trajet\n {self.var_entry_start.get()} vers {self.var_entry_end.get()}")
-        self.frame_trajet.pack(fill=tk.Y)
-
-        # on appelle la fonction qui affiche la carte principale
-        self.show_large_map()
-
+            messagebox.showinfo("Itinéraire incomplet", "Adresse(s) de départ et/ou d'arrivée non renseignée(s) ou non reconnue(s). \nVeuillez compléter les champs manquants.")
+           
     def show_large_map(self):
         co_trajet = []
         for fuv_rue in self.itineraire :
@@ -244,12 +332,11 @@ class MainWindow():
                 co_trajet.append(Point(co_gps[0],co_gps[1]))            
 
         geo_trajet_data = gpd.GeoDataFrame(geometry=[LineString(co_trajet)])
-                    
+
         #mise a jour de la carte 
         geo_trajet_data.plot(ax=self.ax)
         self.canvas.draw()
 
-    
     def bouton_change_iti(self,event):
         msg_user = messagebox.askyesno("Changer d'itineraire ?","Voulez vous vraiment changer d'itinéraire ?\n Celui-ci sera perdu")
         if msg_user == True :
@@ -272,12 +359,24 @@ class MainWindow():
         self.frame_trajet.pack_forget()
         self.frame_princ.pack(fill=tk.Y)
 
-
     def load_all_datas(self):
-        self.carrefour_adjacences,self.dico_rues = Load_Files.charger_donnees()
+        self.dico_noeuds, self.dico_rues = Load_Files.charger_donnees_troncon()
+        self.progress_bar['value'] = 25
+        self.root.update_idletasks()
+        self.dico_noeuds, self.dico_rues = Load_Files.charger_donnees_chausses(self.dico_noeuds, self.dico_rues)
+        self.progress_bar['value'] = 50
+        self.root.update_idletasks()
+        self.dico_noeuds = Load_Files.correction_dico_noeuds(self.dico_noeuds)
+        self.progress_bar['value'] = 60
+        self.root.update_idletasks()
+        self.carrefour_adjacences = Load_Files.charger_donnees_adj(self.dico_noeuds)
+        self.progress_bar['value'] = 75
+        self.root.update_idletasks()
+        self.dico_adresses_num, self.dico_adresses_rues, self.dico_adresses_communes = Load_Files.charger_donnees_adresses()
+        self.progress_bar['value'] = 100
+        self.root.update_idletasks()
         #une fois le chargement de donnees effectue, on met a jour l'affichage pour afficher le menu d'acceuil
-        self.initWidget() 
-
+        self.root.after(100,self.initWidget)    
 
 class TopLevelParams():
     def __init__(self,mainwindow):
@@ -305,7 +404,10 @@ class TopLevelParcour():
         self.itineraire = itineraire
         self.etape = 0
         
+        self.liste_echelles = [0.3, 1, 3, 10, 30, 100, 300, 1000, 3000, 10000]
+        
         self.toplevel_parcour = tk.Toplevel(self.mainwindow)
+        self.toplevel_parcour.resizable(height = False, width = False) 
         self.toplevel_parcour.title = "Trajet"
         
         self.f_par_width = 400
@@ -335,7 +437,7 @@ class TopLevelParcour():
         self.button_past_step.bind('<Button-1>', self.precedent)
         self.toplevel_parcour.bind('<Left>', self.precedent)
         self.button_past_step.grid(column=0,row=0,padx=5,pady=5)
-                
+
         self.button_forward_step = tk.Button(self.frame_bt,text="Etape Suivante",bg='gray',fg='black',relief='flat')
         self.button_forward_step.bind('<Button-1>', self.suivant)
         self.toplevel_parcour.bind('<Right>', self.suivant)
@@ -351,8 +453,12 @@ class TopLevelParcour():
             self.main_canvas.delete(self.ligne_nord)
             self.main_canvas.delete(self.texte_nord)
             self.main_canvas.delete(self.rect_nord)
+            self.main_canvas.delete(self.rect_echelle)
+            self.main_canvas.delete(self.text_echelle)
             for ligne in self.liste_ligne_adj :
                 self.main_canvas.delete(ligne)
+            for rect in self.liste_rect_echelle :
+                self.main_canvas.delete(rect)
             self.etape -= 1
             self.show_iti(self.itineraire[self.etape],self.itineraire[self.etape+1])
     
@@ -364,8 +470,12 @@ class TopLevelParcour():
         self.main_canvas.delete(self.ligne_nord)
         self.main_canvas.delete(self.texte_nord)
         self.main_canvas.delete(self.rect_nord)
+        self.main_canvas.delete(self.rect_echelle)
+        self.main_canvas.delete(self.text_echelle)
         for ligne in self.liste_ligne_adj :
             self.main_canvas.delete(ligne)
+        for rect in self.liste_rect_echelle :
+            self.main_canvas.delete(rect)
         if self.etape + 1 < len(self.itineraire):
             self.show_iti(self.itineraire[self.etape],self.itineraire[self.etape+1])
         else:
@@ -374,7 +484,7 @@ class TopLevelParcour():
     def show_iti(self, fuv_tr_pre, fuv_tr_suiv):
         #Recherche des segments adjacents, compilation de leurs co GPS dans un dictionnaire
         #puis passage en co cartesienne
-        dico_fuv_tr_adj = self.compute_cross(fuv_tr_pre, fuv_tr_suiv)
+        dico_fuv_tr_adj, lat_noeud = self.compute_cross(fuv_tr_pre, fuv_tr_suiv)
         #calcul des points qui seront visible et qu'il faut donc prendreen compte pour l'orientation 
         dist_min = self.calcul_dist_min(dico_fuv_tr_adj)
         i = 1
@@ -396,29 +506,53 @@ class TopLevelParcour():
         xy_noeud = dico_fuv_tr_rot["precedent"][fuv_tr_pre][0]
         #Mise à l'echelle des co en fonction de la distance min
         dico_fuv_tr_carte = self.xy_cartesien(norme_min, dico_fuv_tr_rot, xy_noeud)
+        #determination des coordonnées du nord
         co_nord = [[370-math.cos(alpha_pre)*20, 30+math.sin(alpha_pre)*20], [370+math.cos(alpha_pre)*20, 30-math.sin(alpha_pre)*20]]
+        #determination de l'echelle
+        echelle = 0.1 * math.cos(math.radians(lat_noeud)) * norme_min * 2 * 6371000 * 2 * math.pi / 2000
+        i = 0
+        echelle_choisie = 0
+        cote_echelle = 0
+        while i < len(self.liste_echelles) and echelle_choisie == 0:
+            if echelle < self.liste_echelles[i]:
+                echelle_choisie = self.liste_echelles[i]
+                cote_echelle = 40*echelle_choisie/echelle
+            i += 1
         #Dessin sur le canvas et affichage des informations
-        self.dessine_noeud(dico_fuv_tr_carte, fuv_tr_pre, fuv_tr_suiv, co_nord)
+        self.dessine_noeud(dico_fuv_tr_carte, fuv_tr_pre, fuv_tr_suiv, co_nord, cote_echelle, echelle_choisie)
         self.instructions(dico_fuv_tr_carte, fuv_tr_pre, fuv_tr_suiv)
         
         
-    def dessine_noeud(self, dico_fuv_tr_carte, fuv_tr_pre, fuv_tr_suiv, co_nord):
-        #on trace les segments suivant et precedent
-        self.ligne_pre = self.main_canvas.create_line(dico_fuv_tr_carte["precedent"][fuv_tr_pre], fill = "red", width = 15)
-        self.ligne_suiv = self.main_canvas.create_line(dico_fuv_tr_carte["suivant"][fuv_tr_suiv], fill = "red", width = 15)
+    def dessine_noeud(self, dico_fuv_tr_carte, fuv_tr_pre, fuv_tr_suiv, co_nord, cote_echelle, echelle_choisie):
         #on trace les eventuels chemins adjacents
         self.liste_ligne_adj =[]
         for troncon in dico_fuv_tr_carte["adjacents"]:
             ligne = self.main_canvas.create_line(dico_fuv_tr_carte["adjacents"][troncon], fill = "grey", width = 10)
             self.liste_ligne_adj.append(ligne)
+        #on trace les segments suivant et precedent
+        self.ligne_pre = self.main_canvas.create_line(dico_fuv_tr_carte["precedent"][fuv_tr_pre], fill = "red", width = 15)
+        self.ligne_suiv = self.main_canvas.create_line(dico_fuv_tr_carte["suivant"][fuv_tr_suiv], fill = "red", width = 15)
         #on trace le noeud
         x_noeud = dico_fuv_tr_carte["precedent"][fuv_tr_pre][0][0]
         y_noeud = dico_fuv_tr_carte["precedent"][fuv_tr_pre][0][1]
         self.rond_noeud = self.main_canvas.create_oval(x_noeud-20,y_noeud-20,x_noeud+20,y_noeud+20, fill = "red")
         #on trace le nord
-        self.rect_nord = self.main_canvas.create_rectangle(348,8,392,85, fill = "white")
+        self.rect_nord = self.main_canvas.create_rectangle(348,8,392,80, fill = "white")
         self.ligne_nord = self.main_canvas.create_line(co_nord, fill = "black", width = 4, arrow = "last", arrowshape = (16,20,6))
-        self.texte_nord = self.main_canvas.create_text(370, 70, text = "N", fill = "black", font ="15")
+        self.texte_nord = self.main_canvas.create_text(370, 65, text = "N", fill = "black", font ="15")
+        #on trace l'echelle
+        #self.rect_b_echelle = self.main_canvas.create_rectangle(387-cote_echelle,367,393,393, fill = "white")
+        self.rect_echelle = self.main_canvas.create_rectangle(390-cote_echelle,380,390,390, fill = "black")
+        self.liste_rect_echelle = []
+        if echelle_choisie%3 == 0:
+            for i in range(3):
+                rect_blanc = self.main_canvas.create_rectangle(390-((2*i+1)*cote_echelle/6),380,390-((2*i)*cote_echelle/6),390, fill = "white")
+                self.liste_rect_echelle.append(rect_blanc)
+        else:
+            for i in range(2):
+                rect_blanc = self.main_canvas.create_rectangle(390-((2*i+2)*cote_echelle/5),380,390-((2*i+1)*cote_echelle/5),390, fill = "white")
+                self.liste_rect_echelle.append(rect_blanc)        
+        self.text_echelle = self.main_canvas.create_text((2*390 - cote_echelle)/2,370,text = str(echelle_choisie)+" m", fill = "white", font ="Calibri 12")
         
     def instructions(self, dico_fuv_tr_carte, fuv_tr_pre, fuv_tr_suiv):
         i = 1
@@ -489,16 +623,16 @@ class TopLevelParcour():
             for troncon in dico_fuv_tr_gps[categorie]:
                 for co_gps in dico_fuv_tr_gps[categorie][troncon]:
                     if troncon not in dico_fuv_tr_xy[categorie].keys():
-                        dico_fuv_tr_xy[categorie][troncon] = [self.xy_lat_long(co_gps[1],co_gps[0])]
+                        dico_fuv_tr_xy[categorie][troncon] = [self.xy_lat_long(co_gps[1],co_gps[0],co_gps_noeud[-1])]
                     else:
-                        dico_fuv_tr_xy[categorie][troncon].append(self.xy_lat_long(co_gps[1],co_gps[0]))
-        return dico_fuv_tr_xy
+                        dico_fuv_tr_xy[categorie][troncon].append(self.xy_lat_long(co_gps[1],co_gps[0],co_gps_noeud[-1]))
+        return dico_fuv_tr_xy, co_gps_noeud[-1]
 
-    def xy_lat_long(self, latitude, longitude):
+    def xy_lat_long(self, latitude, longitude, latitude_ref):
         #on fait en sorte que la longitude soit comprise entre 0 et 360 et non entre -180 et 180
         longitude = longitude + 180
         #on la rapporte de 0 à 2000
-        x = ((longitude*2000)/360)
+        x = ((longitude*2000*math.cos(math.radians(latitude_ref)))/360)
         #idem mais la latitude est comprise entre 0 et 180
         latitude = latitude + 90
         hauteur = (latitude*1000)/180 
