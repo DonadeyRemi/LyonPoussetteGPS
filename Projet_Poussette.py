@@ -23,6 +23,8 @@ class MainWindow():
         self.loading_label_1.pack(anchor = tk.CENTER)
         self.loading_label_2 = tk.Label(self.root, text = "Veuillez patienter", font = "Calibri 13")
         self.loading_label_2.pack(anchor = tk.CENTER)
+        self.progress_bar = ttk.Progressbar(self.root, orient = tk.HORIZONTAL, length = 100, mode = 'determinate')
+        self.progress_bar.pack()
         self.root.title("Lyonyroule")
         # la fonction load_all_datas est lancée au bout de 100ms après le démarage (cf. ligne 679 (plus à jour))
         # la fonction initWidget est appelée à la fin de la fonction load_all_datas
@@ -41,6 +43,7 @@ class MainWindow():
     def initWidget(self):
         self.loading_label_1.destroy()
         self.loading_label_2.destroy()
+        self.progress_bar.destroy()
         self.root.geometry("1000x600")
         
          # creation de la figure matplotlib 
@@ -71,7 +74,7 @@ class MainWindow():
         self.liste_depart = []
         self.var_entry_start = tk.StringVar(value = "Départ")
         self.start_selection = ttk.Combobox(self.frame_dest, textvariable=self.var_entry_start, values = self.liste_depart, width = 80, foreground = "black")
-        self.start_selection.bind("<KeyRelease-space>",self.get_entry_start)
+        self.start_selection.bind("<KeyRelease>",self.get_entry_start)
         self.start_selection.bind("<Button-1>",self.effacer_start)
         self.start_selection.bind("<KeyRelease-Return>", self.down_start)
         self.start_selection.bind("<<ComboboxSelected>>", self.choose_start)
@@ -80,7 +83,7 @@ class MainWindow():
         self.liste_arrivee = []
         self.var_entry_end = tk.StringVar(value = "Arrivée")
         self.end_selection = ttk.Combobox(self.frame_dest, textvariable=self.var_entry_end, values = self.liste_arrivee , foreground = "black")
-        self.end_selection.bind("<KeyRelease-space>",self.get_entry_end)
+        self.end_selection.bind("<KeyRelease>",self.get_entry_end)
         self.end_selection.bind("<Button-1>",self.effacer_end)
         self.end_selection.bind("<KeyRelease-Return>", self.down_end)
         self.end_selection.bind("<<ComboboxSelected>>", self.choose_end)
@@ -165,7 +168,8 @@ class MainWindow():
     def get_entry_start(self, event):
         if event.widget.get() != self.saisie_user_start and event.widget.get() != "":
             self.saisie_user_start = event.widget.get()
-            self.liste_depart = Load_Files.give_troncon_address(self.saisie_user_start, self.dico_adresses_num, self.dico_adresses_rues, self.l_communes)
+            numero, rue, commune, centre = Load_Files.gestion_saisie(self.saisie_user_start, list(self.dico_adresses_communes.keys()))
+            self.liste_depart = Load_Files.give_troncon_address(numero, rue, commune, centre, self.dico_adresses_num, self.dico_adresses_rues, self.dico_adresses_communes)
             # rajouter option si len(self.liste_depart) == 1 (choose_start ou down_start)
             self.start_selection.configure(values = self.liste_depart)
         self.start_selection.configure(foreground = "red")
@@ -173,10 +177,11 @@ class MainWindow():
     def down_start(self, event):
         if event.widget.get() != self.saisie_user_start and event.widget.get() != "":
             self.saisie_user_start = event.widget.get()
-            self.liste_depart = Load_Files.give_troncon_address(self.saisie_user_start, self.dico_adresses_num, self.dico_adresses_rues, self.l_communes)
+            numero, rue, commune, centre = Load_Files.gestion_saisie(self.saisie_user_start, list(self.dico_adresses_communes.keys()))
+            self.liste_depart = Load_Files.give_troncon_address(numero, rue, commune, centre, self.dico_adresses_num, self.dico_adresses_rues, self.dico_adresses_communes)
             self.start_selection.configure(values = self.liste_depart)
         self.start_selection.event_generate('<Down>',when="tail")
-    
+     
     def choose_start(self, event):
         self.start_selection.configure(foreground = "green")
         choix = event.widget.get().split(" ")
@@ -278,7 +283,9 @@ class MainWindow():
             self.frame_trajet.pack(fill=tk.Y)
             # on appelle la fonction qui affiche la carte principale
             self.show_large_map()
-            
+        else :
+            messagebox.showinfo("Itinéraire incomplet", "Adresse(s) de départ et/ou d'arrivée non renseignée(s) ou non reconnue(s). \nVeuillez compléter les champs manquants.")
+           
     def show_large_map(self):
         co_trajet = []
         for fuv_rue in self.itineraire :
@@ -314,12 +321,24 @@ class MainWindow():
         self.frame_trajet.pack_forget()
         self.frame_princ.pack(fill=tk.Y)
 
-
     def load_all_datas(self):
-        self.carrefour_adjacences,self.dico_rues, self.dico_adresses_num, self.dico_adresses_rues, self.l_communes = Load_Files.charger_donnees()
+        self.dico_noeuds, self.dico_rues = Load_Files.charger_donnees_troncon()
+        self.progress_bar['value'] = 25
+        self.root.update_idletasks()
+        self.dico_noeuds, self.dico_rues = Load_Files.charger_donnees_chausses(self.dico_noeuds, self.dico_rues)
+        self.progress_bar['value'] = 50
+        self.root.update_idletasks()
+        self.dico_noeuds = Load_Files.correction_dico_noeuds(self.dico_noeuds)
+        self.progress_bar['value'] = 60
+        self.root.update_idletasks()
+        self.carrefour_adjacences = Load_Files.charger_donnees_adj(self.dico_noeuds)
+        self.progress_bar['value'] = 75
+        self.root.update_idletasks()
+        self.dico_adresses_num, self.dico_adresses_rues, self.dico_adresses_communes = Load_Files.charger_donnees_adresses()
+        self.progress_bar['value'] = 100
+        self.root.update_idletasks()
         #une fois le chargement de donnees effectue, on met a jour l'affichage pour afficher le menu d'acceuil
-        self.initWidget() 
-
+        self.root.after(100,self.initWidget)    
 
 class TopLevelParams():
     def __init__(self,mainwindow):
