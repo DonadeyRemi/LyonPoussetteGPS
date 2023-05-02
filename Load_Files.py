@@ -50,18 +50,11 @@ def charger_donnees_troncon():
                 dico_noeuds[tuple_gps][rue]=[]
             if troncon not in dico_noeuds[tuple_gps][rue]:
                 dico_noeuds[tuple_gps][rue].append(troncon)
-<<<<<<< HEAD
-    
-                
-    pente_max = -10
-    pente_min = 100
-=======
     return dico_noeuds, dico_rues
 
 def charger_donnees_chausses(dico_noeuds, dico_rues):                
     f_chausses_geojson = "chaussees_trotoirs.geojson"
     arrondi_gps = 12
->>>>>>> 151600e1625aec0110347f0de30e1777732d3340
     with open(f_chausses_geojson,encoding='utf-8') as fichier :
         data = json.load(fichier)
     for segment in data["features"]:
@@ -109,9 +102,6 @@ def charger_donnees_chausses(dico_noeuds, dico_rues):
         dico_rues[rue][troncon]["Largeur_trottoir_D"] = proprietes.get("largeurtrottoirdroit",None)
         dico_rues[rue][troncon]["Revetement_trottoir_G"] = proprietes["revetementtrottoirgauche"]
         dico_rues[rue][troncon]["Largeur_trottoir_G"] = proprietes.get("largeurtrottoirgauche",None)
-
-        if proprietes.get("pentemaximale",None) > pente_max and proprietes.get("pentemaximale",None) != None :
-            pente_max = proprietes.get("pentemaximale",None)
         
         for co_gps in co_gps_rue:
             tuple_gps = (co_gps[0],co_gps[1])
@@ -195,7 +185,6 @@ def charger_donnees_adresses():
             dico_adresses_communes[commune][voie][numero] = co_gps_adresse
 
     return dico_adresses_num, dico_adresses_rues, dico_adresses_communes
-
 
 def setup_adjacence_param(rues_adjacentes,dico_rues,largeur_chaussee_m = None ,pente_m = None, revet_chaussee_enl = None ,revet_trot_enl = None ,largeur_trot_max= None):
     """Réduit le dictionnaire d'adjacence des rues total selon les paramètres de l\'utilisateur donnés par l'application

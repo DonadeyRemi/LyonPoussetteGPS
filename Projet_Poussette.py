@@ -7,12 +7,7 @@ from tkinter import ttk
 from tkinter.ttk import Separator
 from tkinter import messagebox
 import Load_Files
-
-import geopandas as gpd
-import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
-from shapely.geometry import LineString,Point
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import tkintermapview
 
 class MainWindow():
     def __init__(self) :
@@ -46,31 +41,11 @@ class MainWindow():
         self.progress_bar.destroy()
         self.root.geometry("1000x600")
         
-<<<<<<< HEAD
         self.map_widget = tkintermapview.TkinterMapView(self.root, width=800, height=600, corner_radius=0)
         self.map_widget.pack(side=tk.LEFT,fill=tk.BOTH)
-        # set current widget position and zoom
-        self.map_widget.set_position(45.760635007825684, 4.837673800278462)  #on centre sur Lyon
+        self.map_widget.set_position(45.76177569754233, 4.8358160526802685)
         self.map_widget.set_zoom(11)
-        
-=======
-         # creation de la figure matplotlib 
-        self.fig,self.ax = plt.subplots(figsize=(8,8))
-        #mise en place du fond de carte
-        image = mpimg.imread("fond_carte1.png","r")
-        height, width, channels = image.shape
-        self.ax.imshow(image,extent = [4.56, 5.2, 45.500, 46.03])
 
-        # data_commune.boundary.plot(ax=self.ax,color="black",linewidth=1.0)
-
-
-        self.ax.axis('off')
-
-        self.canvas = FigureCanvasTkAgg(self.fig, master=self.root)  # A tk.DrawingArea.
-        self.canvas.draw()
-        self.canvas.get_tk_widget().pack(side=tk.LEFT, fill=tk.Y)
-
->>>>>>> 151600e1625aec0110347f0de30e1777732d3340
 
         separator_canvas = Separator(self.root,orient=tk.VERTICAL)
         separator_canvas.pack(side=tk.LEFT,fill=tk.Y)
@@ -298,14 +273,29 @@ class MainWindow():
         co_trajet = []
         for fuv_rue in self.itineraire :
             co_gps_liste = self.dico_rues[fuv_rue[0]][fuv_rue[1]]['GPS']
-            for co_gps in co_gps_liste :
-                co_trajet.append(Point(co_gps[0],co_gps[1]))            
+            if len(co_trajet) != 0 :
+                if (co_gps_liste[0][1],co_gps_liste[0][0]) == co_trajet[len(co_trajet)-1] or (co_gps_liste[0][1],co_gps_liste[0][0]) == co_trajet[0]:
+                    for co_gps in co_gps_liste :
+                        co_trajet.append((co_gps[1],co_gps[0]))
+                elif (co_gps_liste[len(co_gps_liste)-1][1],co_gps_liste[len(co_gps_liste)-1][0]) == co_trajet[len(co_trajet)-1] or (co_gps_liste[len(co_gps_liste)-1][1],co_gps_liste[len(co_gps_liste)-1][0]) == co_trajet[0]:
+                    for i in range(len(co_gps_liste)-1,-1,-1):
+                        co_trajet.append((co_gps_liste[i][1],co_gps_liste[i][0]))
 
-        geo_trajet_data = gpd.GeoDataFrame(geometry=[LineString(co_trajet)])
+                #else : 
+                    #print((co_gps_liste[0][1],co_gps_liste[0][0]),co_trajet[len(co_trajet)-1],co_gps_liste[len(co_gps_liste)-1][1],co_gps_liste[len(co_gps_liste)-1][0])
 
-        #mise a jour de la carte 
-        geo_trajet_data.plot(ax=self.ax)
-        self.canvas.draw()
+            else :
+                for co_gps in co_gps_liste :
+                    co_trajet.append((co_gps[1],co_gps[0]))
+
+
+        print(co_trajet)
+        #ajout d'un marker au debut et fin
+        marker_debut = self.map_widget.set_marker(co_trajet.pop(0)[0],co_trajet.pop(0)[1],text="Start")
+        marker_fin = self.map_widget.set_marker(co_trajet.pop()[0],co_trajet.pop()[1],text="End")
+        co_trajet.insert(0,marker_debut.position)
+        co_trajet.insert(len(co_trajet)-1,marker_fin.position)
+        self.map_widget.set_path(co_trajet)
 
     def bouton_change_iti(self,event):
         msg_user = messagebox.askyesno("Changer d'itineraire ?","Voulez vous vraiment changer d'itinéraire ?\n Celui-ci sera perdu")
