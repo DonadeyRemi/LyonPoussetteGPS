@@ -7,18 +7,8 @@ from tkinter import ttk
 from tkinter.ttk import Separator
 from tkinter import messagebox
 import Load_Files
-
-import geopandas as gpd
-import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
-<<<<<<< HEAD
 import json
-from shapely.geometry import Polygon,LineString,Point
-from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg,NavigationToolbar2Tk)
-=======
-from shapely.geometry import LineString,Point
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
->>>>>>> e6dffbcec60c8b230138c88aa82c400e89c80e8c
+import tkintermapview
 
 class MainWindow():
     def __init__(self) :
@@ -29,8 +19,6 @@ class MainWindow():
         self.loading_label_1.pack(anchor = tk.CENTER)
         self.loading_label_2 = tk.Label(self.root, text = "Veuillez patienter", font = "Calibri 13")
         self.loading_label_2.pack(anchor = tk.CENTER)
-        self.progress_bar = ttk.Progressbar(self.root, orient = tk.HORIZONTAL, length = 100, mode = 'determinate')
-        self.progress_bar.pack()
         self.root.title("Lyonyroule")
         # la fonction load_all_datas est lancée au bout de 100ms après le démarage (cf. ligne 679 (plus à jour))
         # la fonction initWidget est appelée à la fin de la fonction load_all_datas
@@ -49,57 +37,14 @@ class MainWindow():
     def initWidget(self):
         self.loading_label_1.destroy()
         self.loading_label_2.destroy()
-        self.progress_bar.destroy()
         self.root.geometry("1000x600")
         
-<<<<<<< HEAD
-        #lecture des donnees des communes pour les placer sur la carte
-        with open("commune_grand_lyon.geojson",'r') as file :
-            data_commune_json = json.load(file)
+        self.map_widget = tkintermapview.TkinterMapView(self.root, width=800, height=600, corner_radius=0)
+        self.map_widget.pack(side=tk.LEFT,fill=tk.BOTH)
+        # set current widget position and zoom
+        self.map_widget.set_position(45.760635007825684, 4.837673800278462)  #on centre sur Lyon
+        self.map_widget.set_zoom(10)
         
-        
-        polygones = []
-        for dico_commune in data_commune_json["features"] :
-            liste_co_gps = dico_commune["geometry"]["coordinates"][0]
-            lat = []
-            long = []
-            for co in liste_co_gps :
-                lat.append(co[1])
-                long.append(co[0])
-                
-            polygones.append(Polygon(zip(long, lat)))
-            
-            
-        #data_commune = gpd.GeoDataFrame(geometry=polygones)
-            
-        # creation de la figure matplotlib 
-=======
-         # creation de la figure matplotlib 
->>>>>>> e6dffbcec60c8b230138c88aa82c400e89c80e8c
-        self.fig,self.ax = plt.subplots(figsize=(8,8))
-        #mise en place du fond de carte
-        image = mpimg.imread(r"C:/Users/timhu/Documents/1_Scolaire/INSA_2A/Informatique/Projet/Donnees_projet/fond_carte1.png")
-        height, width, channels = image.shape
-        self.ax.imshow(image,extent = [4.56, 5.2, 45.500, 46.03])
-<<<<<<< HEAD
-        
-        #data_commune.boundary.plot(ax=self.ax,color="black",linewidth=1.0)
-        
-        
-=======
-
-        # data_commune.boundary.plot(ax=self.ax,color="black",linewidth=1.0)
-
-
->>>>>>> e6dffbcec60c8b230138c88aa82c400e89c80e8c
-        self.ax.axis('off')
-
-        self.canvas = FigureCanvasTkAgg(self.fig, master=self.root)  # A tk.DrawingArea.
-        self.canvas.draw()
-        self.toolbar = NavigationToolbar2Tk(self.canvas,self.root)
-        self.toolbar.update()
-        self.canvas.get_tk_widget().pack(side=tk.LEFT, fill=tk.Y)
-
 
         separator_canvas = Separator(self.root,orient=tk.VERTICAL)
         separator_canvas.pack(side=tk.LEFT,fill=tk.Y)
@@ -112,7 +57,7 @@ class MainWindow():
         self.liste_depart = []
         self.var_entry_start = tk.StringVar(value = "Départ")
         self.start_selection = ttk.Combobox(self.frame_dest, textvariable=self.var_entry_start, values = self.liste_depart, width = 80, foreground = "black")
-        self.start_selection.bind("<KeyRelease>",self.get_entry_start)
+        self.start_selection.bind("<KeyRelease-space>",self.get_entry_start)
         self.start_selection.bind("<Button-1>",self.effacer_start)
         self.start_selection.bind("<KeyRelease-Return>", self.down_start)
         self.start_selection.bind("<<ComboboxSelected>>", self.choose_start)
@@ -121,7 +66,7 @@ class MainWindow():
         self.liste_arrivee = []
         self.var_entry_end = tk.StringVar(value = "Arrivée")
         self.end_selection = ttk.Combobox(self.frame_dest, textvariable=self.var_entry_end, values = self.liste_arrivee , foreground = "black")
-        self.end_selection.bind("<KeyRelease>",self.get_entry_end)
+        self.end_selection.bind("<KeyRelease-space>",self.get_entry_end)
         self.end_selection.bind("<Button-1>",self.effacer_end)
         self.end_selection.bind("<KeyRelease-Return>", self.down_end)
         self.end_selection.bind("<<ComboboxSelected>>", self.choose_end)
@@ -206,8 +151,7 @@ class MainWindow():
     def get_entry_start(self, event):
         if event.widget.get() != self.saisie_user_start and event.widget.get() != "":
             self.saisie_user_start = event.widget.get()
-            numero, rue, commune, centre = Load_Files.gestion_saisie(self.saisie_user_start, list(self.dico_adresses_communes.keys()))
-            self.liste_depart = Load_Files.give_troncon_address(numero, rue, commune, centre, self.dico_adresses_num, self.dico_adresses_rues, self.dico_adresses_communes)
+            self.liste_depart = Load_Files.give_troncon_address(self.saisie_user_start, self.dico_adresses_num, self.dico_adresses_rues, self.l_communes)
             # rajouter option si len(self.liste_depart) == 1 (choose_start ou down_start)
             self.start_selection.configure(values = self.liste_depart)
         self.start_selection.configure(foreground = "red")
@@ -215,11 +159,10 @@ class MainWindow():
     def down_start(self, event):
         if event.widget.get() != self.saisie_user_start and event.widget.get() != "":
             self.saisie_user_start = event.widget.get()
-            numero, rue, commune, centre = Load_Files.gestion_saisie(self.saisie_user_start, list(self.dico_adresses_communes.keys()))
-            self.liste_depart = Load_Files.give_troncon_address(numero, rue, commune, centre, self.dico_adresses_num, self.dico_adresses_rues, self.dico_adresses_communes)
+            self.liste_depart = Load_Files.give_troncon_address(self.saisie_user_start, self.dico_adresses_num, self.dico_adresses_rues, self.l_communes)
             self.start_selection.configure(values = self.liste_depart)
         self.start_selection.event_generate('<Down>',when="tail")
-     
+    
     def choose_start(self, event):
         self.start_selection.configure(foreground = "green")
         choix = event.widget.get().split(" ")
@@ -321,21 +264,21 @@ class MainWindow():
             self.frame_trajet.pack(fill=tk.Y)
             # on appelle la fonction qui affiche la carte principale
             self.show_large_map()
-        else :
-            messagebox.showinfo("Itinéraire incomplet", "Adresse(s) de départ et/ou d'arrivée non renseignée(s) ou non reconnue(s). \nVeuillez compléter les champs manquants.")
-           
+            
     def show_large_map(self):
         co_trajet = []
         for fuv_rue in self.itineraire :
             co_gps_liste = self.dico_rues[fuv_rue[0]][fuv_rue[1]]['GPS']
             for co_gps in co_gps_liste :
-                co_trajet.append(Point(co_gps[0],co_gps[1]))            
+                co_trajet.append((co_gps[1],co_gps[0]))            
 
-        geo_trajet_data = gpd.GeoDataFrame(geometry=[LineString(co_trajet)])
-
-        #mise a jour de la carte 
-        geo_trajet_data.plot(ax=self.ax)
-        self.canvas.draw()
+        #mise a jour de la carte avec le tracer de la carte
+        #ajout du marker au debut et a la fin
+        marker_start = self.map_widget.set_marker(co_trajet.pop(0)[1],co_trajet.pop(0)[0],marker=True)
+        marker_end = self.map_widget.set_marker(co_trajet.pop()[1],co_trajet.pop()[0],marker=True)
+        co_trajet.insert(0,marker_start)
+        co_trajet.insert(len(co_trajet)-1,marker_end)
+        self.path = self.map_widget.set_path(co_trajet)
 
     def bouton_change_iti(self,event):
         msg_user = messagebox.askyesno("Changer d'itineraire ?","Voulez vous vraiment changer d'itinéraire ?\n Celui-ci sera perdu")
@@ -359,24 +302,12 @@ class MainWindow():
         self.frame_trajet.pack_forget()
         self.frame_princ.pack(fill=tk.Y)
 
+
     def load_all_datas(self):
-        self.dico_noeuds, self.dico_rues = Load_Files.charger_donnees_troncon()
-        self.progress_bar['value'] = 25
-        self.root.update_idletasks()
-        self.dico_noeuds, self.dico_rues = Load_Files.charger_donnees_chausses(self.dico_noeuds, self.dico_rues)
-        self.progress_bar['value'] = 50
-        self.root.update_idletasks()
-        self.dico_noeuds = Load_Files.correction_dico_noeuds(self.dico_noeuds)
-        self.progress_bar['value'] = 60
-        self.root.update_idletasks()
-        self.carrefour_adjacences = Load_Files.charger_donnees_adj(self.dico_noeuds)
-        self.progress_bar['value'] = 75
-        self.root.update_idletasks()
-        self.dico_adresses_num, self.dico_adresses_rues, self.dico_adresses_communes = Load_Files.charger_donnees_adresses()
-        self.progress_bar['value'] = 100
-        self.root.update_idletasks()
+        self.carrefour_adjacences,self.dico_rues, self.dico_adresses_num, self.dico_adresses_rues, self.l_communes = Load_Files.charger_donnees()
         #une fois le chargement de donnees effectue, on met a jour l'affichage pour afficher le menu d'acceuil
-        self.root.after(100,self.initWidget)    
+        self.initWidget() 
+
 
 class TopLevelParams():
     def __init__(self,mainwindow):
