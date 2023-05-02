@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import json
 from shapely.geometry import Polygon,LineString,Point
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg,NavigationToolbar2Tk)
 
 class MainWindow():
     def __init__(self) :
@@ -42,9 +42,6 @@ class MainWindow():
         #lecture des donnees des communes pour les placer sur la carte
         with open("commune_grand_lyon.geojson",'r') as file :
             data_commune_json = json.load(file)
-            
-        with open("cours_eau.geojson",'r') as file :
-            data_eau_json = json.load(file)
         
         
         polygones = []
@@ -59,8 +56,7 @@ class MainWindow():
             polygones.append(Polygon(zip(long, lat)))
             
             
-        data_commune = gpd.GeoDataFrame(geometry=polygones)
-        #data_eau = gpd.GeoDataFrame(geometry=eau_lines)
+        #data_commune = gpd.GeoDataFrame(geometry=polygones)
             
         # creation de la figure matplotlib 
         self.fig,self.ax = plt.subplots(figsize=(8,8))
@@ -69,13 +65,15 @@ class MainWindow():
         height, width, channels = image.shape
         self.ax.imshow(image,extent = [4.56, 5.2, 45.500, 46.03])
         
-        data_commune.boundary.plot(ax=self.ax,color="black",linewidth=1.0)
+        #data_commune.boundary.plot(ax=self.ax,color="black",linewidth=1.0)
         
         
         self.ax.axis('off')
         
         self.canvas = FigureCanvasTkAgg(self.fig, master=self.root)  # A tk.DrawingArea.
         self.canvas.draw()
+        self.toolbar = NavigationToolbar2Tk(self.canvas,self.root)
+        self.toolbar.update()
         self.canvas.get_tk_widget().pack(side=tk.LEFT, fill=tk.Y)
         
 
