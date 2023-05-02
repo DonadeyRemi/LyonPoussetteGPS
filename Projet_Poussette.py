@@ -43,7 +43,7 @@ class MainWindow():
         self.map_widget.pack(side=tk.LEFT,fill=tk.BOTH)
         # set current widget position and zoom
         self.map_widget.set_position(45.760635007825684, 4.837673800278462)  #on centre sur Lyon
-        self.map_widget.set_zoom(10)
+        self.map_widget.set_zoom(11)
         
 
         separator_canvas = Separator(self.root,orient=tk.VERTICAL)
