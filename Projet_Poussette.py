@@ -7,6 +7,7 @@ from tkinter import ttk
 from tkinter.ttk import Separator
 from tkinter import messagebox
 import Load_Files
+
 import tkintermapview
 
 class MainWindow():
@@ -15,9 +16,9 @@ class MainWindow():
         self.root = tk.Tk()
         self.root.geometry("300x200")
         self.loading_label_1 = tk.Label(self.root, text = "Chargement des données", font = "Calibri 16")
-        self.loading_label_1.pack(anchor = tk.CENTER)
+        self.loading_label_1.pack()
         self.loading_label_2 = tk.Label(self.root, text = "Veuillez patienter", font = "Calibri 13")
-        self.loading_label_2.pack(anchor = tk.CENTER)
+        self.loading_label_2.pack()
         self.progress_bar = ttk.Progressbar(self.root, orient = tk.HORIZONTAL, length = 100, mode = 'determinate')
         self.progress_bar.pack()
         self.root.title("Lyonyroule")
@@ -43,7 +44,8 @@ class MainWindow():
         
         self.map_widget = tkintermapview.TkinterMapView(self.root, width=800, height=600, corner_radius=0)
         self.map_widget.pack(side=tk.LEFT,fill=tk.BOTH)
-        self.map_widget.set_position(45.76177569754233, 4.8358160526802685)
+        # set current widget position and zoom
+        self.map_widget.set_position(45.76177569754233, 4.8358160526802685)  #on centre sur Lyon
         self.map_widget.set_zoom(11)
 
 
@@ -152,45 +154,59 @@ class MainWindow():
     def get_entry_start(self, event):
         if event.widget.get() != self.saisie_user_start and event.widget.get() != "":
             self.saisie_user_start = event.widget.get()
-            numero, rue, commune, centre = Load_Files.gestion_saisie(self.saisie_user_start, list(self.dico_adresses_communes.keys()))
-            self.liste_depart = Load_Files.give_troncon_address(numero, rue, commune, centre, self.dico_adresses_num, self.dico_adresses_rues, self.dico_adresses_communes)
-            # rajouter option si len(self.liste_depart) == 1 (choose_start ou down_start)
+            numero, rue, commune, com_possibles, latitude, longitude = Load_Files.gestion_saisie(self.saisie_user_start, list(self.dico_adresses_communes.keys()))
+            self.liste_depart = Load_Files.give_troncon_address(numero, rue, commune, com_possibles, latitude, longitude, self.dico_adresses_num, self.dico_adresses_rues, self.dico_adresses_communes)
             self.start_selection.configure(values = self.liste_depart)
         self.start_selection.configure(foreground = "red")
+        self.depart = (None,None)
+        if len(self.liste_depart) == 1 and len(event.widget.get()) > 1:
+            self.start_selection.event_generate('<Down>',when="tail")
     
     def down_start(self, event):
         if event.widget.get() != self.saisie_user_start and event.widget.get() != "":
             self.saisie_user_start = event.widget.get()
-            numero, rue, commune, centre = Load_Files.gestion_saisie(self.saisie_user_start, list(self.dico_adresses_communes.keys()))
-            self.liste_depart = Load_Files.give_troncon_address(numero, rue, commune, centre, self.dico_adresses_num, self.dico_adresses_rues, self.dico_adresses_communes)
+            numero, rue, commune, com_possibles, latitude, longitude = Load_Files.gestion_saisie(self.saisie_user_start, list(self.dico_adresses_communes.keys()))
+            self.liste_depart = Load_Files.give_troncon_address(numero, rue, commune, com_possibles, latitude, longitude, self.dico_adresses_num, self.dico_adresses_rues, self.dico_adresses_communes)
             self.start_selection.configure(values = self.liste_depart)
         self.start_selection.event_generate('<Down>',when="tail")
      
     def choose_start(self, event):
         self.start_selection.configure(foreground = "green")
         saisie = event.widget.get().split(", ")
-        commune = saisie[1]
-        choix = saisie[0].split(" ")
-        a_suppr = []
-        for i in range(len(choix)):
-            if choix[i] == "" or choix[i] == " ":
-                a_suppr.append(i)
-        a_suppr.reverse()
-        for i in a_suppr:
-            choix.pop(i)
-
-        numero = choix.pop(0)
-        rue = ""
-
-        for i in range(len(choix)):
-            rue += choix[i]
-            if i < len(choix)-1:
-                    rue += " "
-        co_gps = self.dico_adresses_num[numero][rue][commune]
+        try:
+            longitude = float(saisie[1])
+            latitude = float(saisie[0])
+            co_gps = [longitude,latitude]
+        except:
+            choix = saisie[0].split(" ")
+            a_suppr = []
+            for i in range(len(choix)):
+                if choix[i] == "" or choix[i] == " ":
+                    a_suppr.append(i)
+            a_suppr.reverse()
+            for i in a_suppr:
+                choix.pop(i)
+            if len(choix) == 1:
+                choix.pop(-1)
+                commune = ""
+                for i in range(len(choix)):
+                    commune += choix[i]
+                    if i < len(choix)-1:
+                            commune += " "
+                co_gps = self.dico_adresses_communes[commune]["centre"]["0"]
+            else : 
+                commune = saisie[1]
+                numero = choix.pop(0)
+                rue = ""
+                for i in range(len(choix)):
+                    rue += choix[i]
+                    if i < len(choix)-1:
+                            rue += " "
+                co_gps = self.dico_adresses_num[numero][rue][commune]
         self.depart = Load_Files.give_troncon_nearest_gps(co_gps, self.dico_rues)
-    
+        
         print()
-        print(self.depart)
+        print(f"FUV+TRONCON départ : {self.depart}")
         print()
     
     def effacer_start(self,event):
@@ -200,44 +216,60 @@ class MainWindow():
     def get_entry_end(self, event):
         if event.widget.get() != self.saisie_user_end and event.widget.get() != "":
             self.saisie_user_end = event.widget.get()
-            numero, rue, commune, com_possibles = Load_Files.gestion_saisie(self.saisie_user_end, list(self.dico_adresses_communes.keys()))
-            self.liste_arrivee = Load_Files.give_troncon_address( numero, rue, commune, com_possibles, self.dico_adresses_num, self.dico_adresses_rues, self.dico_adresses_communes)
-            # rajouter option si len(self.liste_end) == 1 (choose_end ou down_end)
+            numero, rue, commune, com_possibles, latitude, longitude = Load_Files.gestion_saisie(self.saisie_user_end, list(self.dico_adresses_communes.keys()))
+            self.liste_arrivee = Load_Files.give_troncon_address(numero, rue, commune, com_possibles, latitude, longitude, self.dico_adresses_num, self.dico_adresses_rues, self.dico_adresses_communes)
             self.end_selection.configure(values = self.liste_arrivee)
         self.end_selection.configure(foreground = "red")
+        self.arrivee = (None,None)
+        if len(self.liste_arrivee) == 1 and len(event.widget.get()) > 1:
+            self.end_selection.event_generate('<Down>',when="tail")
     
     def down_end(self, event):
         if event.widget.get() != self.saisie_user_end and event.widget.get() != "":
             self.saisie_user_end = event.widget.get()
-            numero, rue, commune, com_possibles = Load_Files.gestion_saisie(self.saisie_user_end, list(self.dico_adresses_communes.keys()))
-            self.liste_arrivee = Load_Files.give_troncon_address( numero, rue, commune, com_possibles, self.dico_adresses_num, self.dico_adresses_rues, self.dico_adresses_communes)
-            # rajouter option si len(self.liste_end) == 1 (choose_end ou down_end)
+            numero, rue, commune, com_possibles, latitude, longitude = Load_Files.gestion_saisie(self.saisie_user_end, list(self.dico_adresses_communes.keys()))
+            self.liste_arrivee = Load_Files.give_troncon_address(numero, rue, commune, com_possibles, latitude, longitude, self.dico_adresses_num, self.dico_adresses_rues, self.dico_adresses_communes)
             self.end_selection.configure(values = self.liste_arrivee)
         self.end_selection.event_generate('<Down>',when="tail")
     
     def choose_end(self, event):
         self.end_selection.configure(foreground = "green")
         saisie = event.widget.get().split(", ")
-        commune = saisie[1]
-        choix = saisie[0].split(" ")
-        a_suppr = []
-        for i in range(len(choix)):
-            if choix[i] == "" or choix[i] == " ":
-                a_suppr.append(i)
-        a_suppr.reverse()
-        for i in a_suppr:
-            choix.pop(i)    
-        numero = choix.pop(0)
-        rue = ""
-        for i in range(len(choix)):
-            rue += choix[i]
-            if i < len(choix)-1:
-                    rue += " "
-        co_gps = self.dico_adresses_num[numero][rue][commune]
+        try:
+            longitude = float(saisie[1])
+            latitude = float(saisie[0])
+            co_gps = [longitude,latitude]
+        except:
+            choix = saisie[0].split(" ")
+            a_suppr = []
+            for i in range(len(choix)):
+                if choix[i] == "" or choix[i] == " ":
+                    a_suppr.append(i)
+            a_suppr.reverse()
+            for i in a_suppr:
+                choix.pop(i)
+                
+            if len(saisie) == 1:
+                choix.pop(-1)
+                commune = ""
+                for i in range(len(choix)):
+                    commune += choix[i]
+                    if i < len(choix)-1:
+                            commune += " "
+                co_gps = self.dico_adresses_communes[commune]["centre"]["0"]
+            else:
+                commune = saisie[1]
+                numero = choix.pop(0)
+                rue = ""
+                for i in range(len(choix)):
+                    rue += choix[i]
+                    if i < len(choix)-1:
+                            rue += " "
+                co_gps = self.dico_adresses_num[numero][rue][commune]
         self.arrivee = Load_Files.give_troncon_nearest_gps(co_gps, self.dico_rues)
-    
+        
         print()
-        print(self.arrivee)
+        print(f"FUV+TRONCON arrivée : {self.arrivee}")
         print()
     
     def effacer_end(self,event):
@@ -257,7 +289,7 @@ class MainWindow():
         Args:
             event (dict): the tk event object return after the user event
         """
-        if self.depart != (None,None) and self.arrivee != (None,None):
+        if self.depart != (None,None) and self.arrivee != (None,None) and self.depart != self.arrivee:
             self.itineraire, self.dist_trajet = Load_Files.a_star(self.depart,self.arrivee,self.carrefour_adjacences, self.dico_rues)
             print(self.dico_rues[self.itineraire[0][0]][self.itineraire[0][1]]['GPS'])
             #on cache la frame principale et affiche la frame itineraire
@@ -333,10 +365,13 @@ class MainWindow():
         self.progress_bar['value'] = 75
         self.root.update_idletasks()
         self.dico_adresses_num, self.dico_adresses_rues, self.dico_adresses_communes = Load_Files.charger_donnees_adresses()
+        self.progress_bar['value'] = 95
+        self.root.update_idletasks()
+        self.dico_adresses_communes = Load_Files.charger_donnees_centre(self.dico_adresses_communes)
         self.progress_bar['value'] = 100
         self.root.update_idletasks()
         #une fois le chargement de donnees effectue, on met a jour l'affichage pour afficher le menu d'acceuil
-        self.root.after(100,self.initWidget)    
+        self.root.after(500,self.initWidget)    
 
 class TopLevelParams():
     def __init__(self,mainwindow):

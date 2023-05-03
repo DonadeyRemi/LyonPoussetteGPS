@@ -186,6 +186,20 @@ def charger_donnees_adresses():
 
     return dico_adresses_num, dico_adresses_rues, dico_adresses_communes
 
+def charger_donnees_centre(dico_adresses_communes):
+    for commune in dico_adresses_communes.keys():
+        somme_lat = 0.0
+        somme_lon = 0.0
+        compteur = 0
+        for rue in dico_adresses_communes[commune].keys():
+            for numero in dico_adresses_communes[commune][rue].keys():
+                compteur += 1
+                somme_lon += dico_adresses_communes[commune][rue][numero][0]
+                somme_lat += dico_adresses_communes[commune][rue][numero][1]
+        co_centre = [somme_lon/compteur,somme_lat/compteur]
+        dico_adresses_communes[commune]["centre"]={"0":co_centre}
+    return dico_adresses_communes
+
 def setup_adjacence_param(rues_adjacentes,dico_rues,largeur_chaussee_m = None ,pente_m = None, revet_chaussee_enl = None ,revet_trot_enl = None ,largeur_trot_max= None):
     """Réduit le dictionnaire d'adjacence des rues total selon les paramètres de l\'utilisateur donnés par l'application
     Args:
@@ -247,25 +261,28 @@ def give_troncon_nearest_gps(co_gps_user,dico_rues):
     
 def gestion_saisie(saisie_user, l_communes):
     liste_saisie = saisie_user.split(", ")
-    centre = False
+    latitude = None
+    longitude = None
+    com_possibles = []
     commune = None
     rue = None
     numero = None
     if len(liste_saisie) > 1 :
-        commune = liste_saisie.pop(-1)
-        print(f'Commune reconnue : {commune}')
+        try:
+            longitude = float(liste_saisie[-1])
+            latitude = float(liste_saisie[0])
+            print(f'Coordonnées GPS reconnues : \nLatitude : {latitude} \nLongitude : {longitude}')
+        except:
+            commune = liste_saisie.pop(-1)
+            print(f'Commune reconnue : {commune}')
     else:
-        i = 0
-        while commune == None and i < len(l_communes):
+        for i in range(len(l_communes)):
             if liste_saisie[0].lower() in l_communes[i].lower():
-                commune = l_communes[i] #!!!
-                # commune = liste_saisie[0]
+                com_possibles.append(l_communes[i])
                 print(f'Centre commune reconnu : {commune}')
-                centre = True
-            i += 1
-    if commune == None :
+    if commune == None and com_possibles != []:
         print('Commune non-reconnue ou non-renseignée.')
-    if not centre:
+    if com_possibles == [] and longitude == None and latitude == None:
         liste_rue = liste_saisie[0].split(" ")
         a_suppr = []
         for i in range(len(liste_rue)):
@@ -293,17 +310,30 @@ def gestion_saisie(saisie_user, l_communes):
         else:
             print("Aucune rue saisie")
     print()
-    return numero, rue, commune, centre
+    return numero, rue, commune, com_possibles, latitude, longitude
 
-def give_troncon_address(numero, rue, commune, centre, dico_adresses_num, dico_adresses_rues, dico_adresses_communes):
+def give_troncon_address(numero, rue, commune, com_possibles, latitude, longitude, dico_adresses_num, dico_adresses_rues, dico_adresses_communes):
     nb_prop_max = 6
     liste_adresses = []
     # on essaye de savoir où en est la saisie
+    # cas ou l'utilisateur saisi des co GPS
+    if latitude != None and longitude != None:
+        if longitude < 4.685632778305:
+            longitude = 4.685632778305
+        elif longitude > 5.135618602316:
+            longitude = 5.135618602316
+        if latitude < 45.557074952992:
+            latitude = 45.557074952992
+        elif latitude > 45.940168465059:
+            latitude = 45.940168465059
+        liste_adresses.append(str(latitude)+", "+str(longitude))
     
     # cas où seulement la commune est saisie
-    if centre:
-        print(f"Centre commune : {commune}")
-        liste_adresses.append(commune+" centre")
+    elif com_possibles != []:
+        for com in com_possibles:
+            if len(liste_adresses) < nb_prop_max:
+                print(f"Centre commune : {commune}")
+                liste_adresses.append(commune+" centre")
     # cas où seul le numero est marqué
     elif commune == None and rue == None and numero != None:
         print(f"Numéro uniquement : {numero}")
@@ -443,4 +473,4 @@ def a_star(start, goal, rues_adjacentes, dico_rues):
     return path, dist_path
 
 if __name__ == "__main__" :
-    adj,rue = charger_donnees()
+    adj,rue = charger_donnees_troncon()
