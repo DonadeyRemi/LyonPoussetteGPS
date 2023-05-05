@@ -13,6 +13,8 @@ import math
 from tkinter import ttk
 from tkinter.ttk import Separator
 from tkinter import messagebox
+from tkinter import scrolledtext #!!!
+from tkscrolledframe import ScrolledFrame
 
 #import Load_Files
 
@@ -487,6 +489,193 @@ def a_star(start, goal, rues_adjacentes, dico_rues):
     print ("Le chemin le plus court est : ", path,', Pour une distance de ', dist_path)
     return path, dist_path
 
+def compute_cross(fuv_tr_pre, fuv_tr_suiv, dico_rues, rues_adjacentes):
+    #On recup les infos sur les segments precedent et suivant
+    info_pre = dico_rues[fuv_tr_pre[0]][fuv_tr_pre[1]]
+    info_suiv = dico_rues[fuv_tr_suiv[0]][fuv_tr_suiv[1]]
+    dico_fuv_tr_gps = {"precedent":{},"suivant":{},"adjacents":{}}
+    co_gps_noeud = []
+    co_gps_pre = info_pre['GPS'].copy()
+    co_gps_suiv = info_suiv['GPS'].copy()
+    #on identifie quel cote des segment est lié au noeud
+    #(donc on idetifie aussi les co GPS du noeud)
+    # et on inverse l'ordre des co GPS des segments si besoin
+    # debut de la liste des co GPS d'un segment = le noeud
+    if info_pre['GPS'][0] == info_suiv['GPS'][0] or info_pre['GPS'][0] == info_suiv['GPS'][-1]:
+        co_gps_noeud = info_pre['GPS'][0]
+    else:
+        co_gps_noeud = info_pre['GPS'][-1]
+        co_gps_pre.reverse()
+    if info_suiv['GPS'][0] != co_gps_noeud:
+        co_gps_suiv.reverse()
+    # on met tout ca dans le dico    
+    dico_fuv_tr_gps["suivant"][fuv_tr_suiv] = co_gps_suiv
+    dico_fuv_tr_gps["precedent"][fuv_tr_pre] = co_gps_pre
+    
+    #on identifie quels segments sont adjacents au noeud parmi les adjacents du segment precedent
+    #si on en trouve d'autre que le segment suivant on fait le meme processus que pour le suivant/precedent
+    # (connaitre le sens et renverser l'ordre si besoin, et mettre dans le dico)
+    for fuv_tr in rues_adjacentes[fuv_tr_pre]:
+        info_adj = dico_rues[fuv_tr[0]][fuv_tr[1]]
+        if co_gps_noeud in info_adj['GPS'] and fuv_tr != fuv_tr_suiv:
+            co_gps_adj = info_adj['GPS'].copy()
+            if info_adj['GPS'][0] != co_gps_noeud:
+                co_gps_adj.reverse()
+            dico_fuv_tr_gps["adjacents"][fuv_tr] = co_gps_adj.copy()
+    # on faitr un autre dico, construit de la meme facon mais qui aura les co cartésienne et pas GPS
+    # appel a la fonction de conversion
+    dico_fuv_tr_xy = {"precedent":{},"suivant":{},"adjacents":{}}
+    for categorie in dico_fuv_tr_gps:
+        for troncon in dico_fuv_tr_gps[categorie]:
+            for co_gps in dico_fuv_tr_gps[categorie][troncon]:
+                if troncon not in dico_fuv_tr_xy[categorie].keys():
+                    dico_fuv_tr_xy[categorie][troncon] = [xy_lat_long(co_gps[1],co_gps[0],co_gps_noeud[-1])]
+                else:
+                    dico_fuv_tr_xy[categorie][troncon].append(xy_lat_long(co_gps[1],co_gps[0],co_gps_noeud[-1]))
+    return dico_fuv_tr_xy, co_gps_noeud[-1]
+
+def xy_lat_long(latitude, longitude, latitude_ref):
+    #on fait en sorte que la longitude soit comprise entre 0 et 360 et non entre -180 et 180
+    longitude = longitude + 180
+    #on la rapporte de 0 à 2000
+    x = ((longitude*2000*math.cos(math.radians(latitude_ref)))/360)
+    #idem mais la latitude est comprise entre 0 et 180
+    latitude = latitude + 90
+    # donc on la rapporte de 0 à 1000
+    hauteur = (latitude*1000)/180 
+    y = 1000 - hauteur
+    return [x, y]
+
+def calcul_angle(x1, y1, x2, y2):
+    #tout est dans le titre
+    delta_x = x2 - x1
+    delta_y = y2 - y1
+    alpha = math.pi/2
+    if delta_x != 0:
+        alpha = math.atan(delta_y/delta_x)
+        if delta_x < 0:
+            alpha += math.pi
+    elif delta_y < 0:
+        delta_x += math.pi
+    return alpha
+
+def rotation_repere(angle, dico_fuv_tr_adj):
+    # on fait un nouveau dico, tjrs sur le meme model et en co cartésienne
+    # mais avec les co cartésienne qui font que le segment precdent est vertical
+    # globalement cest un changement de base de mécanique appliqué à toutes les co
+    dico_fuv_tr_rot = {"precedent":{},"suivant":{},"adjacents":{}}
+    for categorie in dico_fuv_tr_adj:
+        for troncon in dico_fuv_tr_adj[categorie]:
+            for co_xy in dico_fuv_tr_adj[categorie][troncon]:
+                x_rot = math.sin(angle)*co_xy[0] - math.cos(angle)*co_xy[1]
+                y_rot = math.cos(angle)*co_xy[0] + math.sin(angle)*co_xy[1]
+                if troncon not in dico_fuv_tr_rot[categorie].keys():
+                    dico_fuv_tr_rot[categorie][troncon] = [[x_rot, y_rot]]
+                else:
+                    dico_fuv_tr_rot[categorie][troncon].append([x_rot, y_rot])
+    return dico_fuv_tr_rot
+
+def xy_cartesien(dist_min, dico_fuv_tr_rot, xy_noeud, width_canvas, height_canvas):
+    #on fait un nouveau dico, tjrs sur le meme model et en co cartésienne
+    # mais cette fois ci l'echelle change pour que les co correspondent avec l'affichage dans le canvas
+    dico_fuv_tr_carte = {"precedent":{},"suivant":{},"adjacents":{}}
+    for categorie in dico_fuv_tr_rot:
+        for troncon in dico_fuv_tr_rot[categorie]:
+            for co_xy in dico_fuv_tr_rot[categorie][troncon]:
+                x_carte = (co_xy[0] - xy_noeud[0] + dist_min)*width_canvas/(2*dist_min)
+                y_carte = (co_xy[1] - xy_noeud[1] + dist_min)*height_canvas/(2*dist_min)
+                if troncon not in dico_fuv_tr_carte[categorie].keys():
+                    dico_fuv_tr_carte[categorie][troncon] = [[x_carte, y_carte]]
+                else:
+                    dico_fuv_tr_carte[categorie][troncon].append([x_carte, y_carte])
+    return dico_fuv_tr_carte
+
+def calcul_norme_min(dico_fuv_tr_rot):
+    #Determination de l'extrémité d'un segment adjacent la plus proche du noeud
+    # selon la norme infini (cf. cours de maths)
+    # permet d'avoir la vision la plus large possible sans voir d'autres noeuds
+    norme_min = math.inf
+    for categorie in dico_fuv_tr_rot:
+        for troncon in dico_fuv_tr_rot[categorie]:
+            co_gps = dico_fuv_tr_rot[categorie][troncon]
+            norme = max(abs(co_gps[-1][0]-co_gps[0][0]),abs(co_gps[-1][1]-co_gps[0][1]))
+            if norme < norme_min and norme != 0 :
+                norme_min = norme
+    return norme_min
+
+def calcul_dist_min(dico_fuv_tr_adj):
+    #Determination de l'extrémité d'un segment adjacent la plus proche du noeud
+    # selon la norme 2 (cf. cours de maths)
+    # permet de prevoir la vision qu'on aura et les points gps qui seront ou non surement dans la fenetre
+    dist_min = math.inf
+    for categorie in dico_fuv_tr_adj:
+        for troncon in dico_fuv_tr_adj[categorie]:
+            dist = distance(dico_fuv_tr_adj[categorie][troncon], 0, -1)
+            if dist < dist_min and dist != 0 :
+                dist_min = dist
+    return dist_min
+
+def distance(co_gps, index1, index2):
+    # distance selon la norme 2 entre 2 points definis par leur index dans une liste de coordonnees
+    return math.sqrt((co_gps[index2][0]-co_gps[index1][0])**2+(co_gps[index2][1]-co_gps[index1][1])**2)
+
+def instructions(dico_fuv_tr_carte, fuv_tr_pre, fuv_tr_suiv, dico_rues):
+    i = 1
+    while i < len(dico_fuv_tr_carte["suivant"][fuv_tr_suiv]) - 1 and distance(dico_fuv_tr_carte["suivant"][fuv_tr_suiv], 0, i) < 200*math.sqrt(2)/2:
+        i += 1
+    x_suivant = dico_fuv_tr_carte["suivant"][fuv_tr_suiv][i][0]
+    y_suivant = dico_fuv_tr_carte["suivant"][fuv_tr_suiv][i][1]
+    x_noeud = dico_fuv_tr_carte["precedent"][fuv_tr_pre][0][0]
+    y_noeud = dico_fuv_tr_carte["precedent"][fuv_tr_pre][0][1]
+    
+    texte_instruction = ""
+    if fuv_tr_pre[0] == fuv_tr_suiv[0]:
+        texte_instruction += "Continuer "
+    else:
+        texte_instruction += "Prendre "
+    if calcul_angle(x_suivant, y_suivant, x_noeud, y_noeud) < 3*math.pi/8:
+        texte_instruction += "à gauche "
+    elif calcul_angle(x_suivant, y_suivant, x_noeud, y_noeud) > 5*math.pi/8:
+        texte_instruction += "à droite "
+    else:
+        texte_instruction += "tout droit "
+    texte_instruction += "sur "
+    if dico_rues[fuv_tr_suiv[0]][fuv_tr_suiv[1]].get("Nom","") != "" and dico_rues[fuv_tr_suiv[0]][fuv_tr_suiv[1]].get("Nom","") != 'Voie sans denomination' and dico_rues[fuv_tr_suiv[0]][fuv_tr_suiv[1]].get("Nom","") != 'Voie sans dénomination':
+        texte_instruction += dico_rues[fuv_tr_suiv[0]][fuv_tr_suiv[1]]["Nom"]
+    elif dico_rues[fuv_tr_suiv[0]][fuv_tr_suiv[1]].get("Denomination_route","") != "":
+        texte_instruction += dico_rues[fuv_tr_suiv[0]][fuv_tr_suiv[1]]["Denomination_route"]
+    else:
+        texte_instruction += "route sans nom"
+    return texte_instruction
+
+def consigne_noeud(fuv_tr_pre, fuv_tr_suiv, dico_rues, rues_adjacentes):
+    #Recherche des segments adjacents, compilation de leurs co GPS dans un dictionnaire
+    #puis passage en co cartesienne
+    dico_fuv_tr_adj, lat_noeud = compute_cross(fuv_tr_pre, fuv_tr_suiv, dico_rues, rues_adjacentes)
+    #calcul des points qui seront visible et qu'il faut donc prendre en compte pour l'orientation 
+    dist_min = calcul_dist_min(dico_fuv_tr_adj)
+    i = 1
+    while i < len(dico_fuv_tr_adj["precedent"][fuv_tr_pre]) - 1 and distance(dico_fuv_tr_adj["precedent"][fuv_tr_pre], 0, i) < dist_min:
+        i += 1
+    #Calcul de l'angle entre le segment precedent (premier et dernier point GPS potentiellement dans le cadre final)
+    # et l'horizontale (axe x)
+    x_noeud = dico_fuv_tr_adj["precedent"][fuv_tr_pre][0][0]
+    y_noeud = dico_fuv_tr_adj["precedent"][fuv_tr_pre][0][1]
+    x_precedent = dico_fuv_tr_adj["precedent"][fuv_tr_pre][i][0]
+    y_precedent = dico_fuv_tr_adj["precedent"][fuv_tr_pre][i][1]
+    alpha_pre = calcul_angle(x_noeud, y_noeud, x_precedent, y_precedent)
+    #Rotation du repere pour avoir le segment precedent en bas de l'ecran, vertical
+    dico_fuv_tr_rot = rotation_repere(alpha_pre, dico_fuv_tr_adj)
+    #Determination de l'extrémité d'un segment adjacent la plus proche du noeud
+    # selon la norme infini (cf. cours de maths)
+    # permet d'avoir la vision la plus large possible sans voir d'autres noeuds
+    norme_min = calcul_norme_min(dico_fuv_tr_rot)
+    xy_noeud = dico_fuv_tr_rot["precedent"][fuv_tr_pre][0]
+    #Mise à l'echelle des co en fonction de la distance min
+    dico_fuv_tr_carte = xy_cartesien(norme_min, dico_fuv_tr_rot, xy_noeud, 400, 400)
+    #détermination de la consigne
+    text_instruction = instructions(dico_fuv_tr_carte, fuv_tr_pre, fuv_tr_suiv, dico_rues)
+    return text_instruction
 # if __name__ == "__main__" :
 #     adj,rue = charger_donnees_troncon()
 
@@ -511,12 +700,14 @@ class MainWindow():
         #itineraire fictif pour test fenetre trajet
         #self.itineraire = [('22416', 'T54924'),('37324', 'T54925'),('37324', 'T54926'),('36078', 'T23765')]
         #self.itineraire = [('33788','T27222'),('33787','T27233'),('33787','T35503'),('33785','T35505'),('33786','T27243'),('33793','T27247'),('33792','T27266'),('33796','T27274'),('33796','T27275'),('33794','T27269')]
+        self.fen_trajet = None
         self.itineraire = []
         self.depart = (None,None)
         self.arrivee = (None,None)
         self.dist_trajet = 0
         self.saisie_user_start = ""
         self.saisie_user_end = ""
+        #self.itineraire.reverse()
 
     def initWidget(self):
         self.loading_label_1.destroy()
@@ -550,6 +741,7 @@ class MainWindow():
         self.start_selection.bind("<Button-1>",self.effacer_start)
         self.start_selection.bind("<KeyRelease-Return>", self.down_start)
         self.start_selection.bind("<<ComboboxSelected>>", self.choose_start)
+        self.start_selection.bind("<FocusOut>",self.ecrire_start)
         self.start_selection.pack(side=tk.TOP, anchor = tk.N, fill=tk.X)
         
         self.liste_arrivee = []
@@ -559,6 +751,7 @@ class MainWindow():
         self.end_selection.bind("<Button-1>",self.effacer_end)
         self.end_selection.bind("<KeyRelease-Return>", self.down_end)
         self.end_selection.bind("<<ComboboxSelected>>", self.choose_end)
+        self.end_selection.bind("<FocusOut>",self.ecrire_end)
         self.end_selection.pack(side=tk.TOP,anchor = tk.N, fill=tk.X)
 
         self.frame_dest.pack(side=tk.TOP,fill=tk.X)
@@ -624,24 +817,31 @@ class MainWindow():
 
         #frame qui contient les widgets en mode trajet
         self.frame_trajet = tk.Frame(self.root)
-        
-        self.var_prop_trajet = tk.StringVar(value=f"Votre Trajet\n {self.var_entry_start.get()} vers {self.var_entry_end.get()}")
+
+        self.var_prop_trajet = tk.StringVar(value=f"Votre Trajet\n {self.var_entry_start.get()}\n vers\n {self.var_entry_end.get()}")
+
         self.label_trajet_prop = tk.Label(self.frame_trajet,textvariable=self.var_prop_trajet,padx=5,pady=5)
         self.label_trajet_prop.pack(side=tk.TOP,fill=tk.X)
 
         self.button_change_iti = tk.Button(self.frame_trajet,text="Modifier votre itineraire",bg='gray',fg='black',relief='flat',padx=5,pady=5)
         self.button_change_iti.pack(side=tk.TOP,fill=tk.X)
         self.button_change_iti.bind("<Button-1>",self.bouton_change_iti)
-     
-        self.button_stop_iti = tk.Button(self.frame_trajet,text="Arreter l'itineraire en cours",bg='gray',fg='black',relief='flat',padx=5,pady=5)
-        self.button_stop_iti.pack(side=tk.BOTTOM,fill=tk.X)
-        self.button_stop_iti.bind("<Button-1>",self.stop_iti)
        
         self.button_start_iti = tk.Button(self.frame_trajet,text="Commencer votre itinéraire",bg='gray',fg='black',relief='flat',padx=5,pady=5)
         self.button_start_iti.pack(side=tk.BOTTOM,fill=tk.X)
         self.button_start_iti.bind("<Button-1>",self.open_window_trajet)
+        
+        self.frame_detail_etapes = ScrolledFrame(self.root, width = 150)
+        self.frame_detail_etapes.pack()
+        self.inner_frame_etapes = self.frame_detail_etapes.display_widget(tk.Frame)
+        label = tk.Label(self.inner_frame_etapes, anchor="center", justify="center", text="Détail de l'itinéraire :\n")
+        label.pack(side=tk.TOP, fill = tk.X)    
 
         self.frame_trajet.pack_forget()
+        self.frame_detail_etapes.pack_forget()
+    
+    # def choix_adresse(self):
+    #     print("ok")
 
     def loop(self):
         self.root.mainloop()
@@ -709,6 +909,13 @@ class MainWindow():
         if self.start_selection.get() == "Départ":
             self.start_selection.set("")
             
+    def ecrire_start(self,event):
+        saisie = self.start_selection.get()
+        saisie = saisie.strip(" ")
+        if saisie == "":
+            self.start_selection.set("Départ")
+            self.start_selection.configure(foreground = "black")
+            
     def get_entry_end(self, event):
         if event.widget.get() != self.saisie_user_end and event.widget.get() != "":
             self.saisie_user_end = event.widget.get()
@@ -765,12 +972,19 @@ class MainWindow():
         self.arrivee = give_troncon_nearest_gps(co_gps, self.dico_rues)
         
         print()
-        print(f"FUV+TRONCON arrivée : {self.arrivee}")
+        print(self.arrivee)
         print()
     
     def effacer_end(self,event):
         if self.end_selection.get() == "Arrivée":
             self.end_selection.set("")
+            
+    def ecrire_end(self,event):
+        saisie = self.end_selection.get()
+        saisie = saisie.strip(" ")
+        if saisie == "":
+            self.end_selection.set("Arrivée")
+            self.end_selection.configure(foreground = "black")
 
     def bouton_param_av(self,event):
         print("Vous avez cliquez sur le boutons des parametres avancés")
@@ -792,8 +1006,17 @@ class MainWindow():
             self.frame_princ.pack_forget()
             self.var_prop_trajet.set(f"Votre Trajet\n {self.var_entry_start.get()} vers {self.var_entry_end.get()}")
             self.frame_trajet.pack(fill=tk.Y)
+            self.frame_detail_etapes.pack(fill=tk.BOTH)
+            
             # on appelle la fonction qui affiche la carte principale
             self.show_large_map()
+            self.l_button_etape = []
+            for i in range(len(self.itineraire)-1):
+                text_detail_etapes = str(i+1) + " : " + consigne_noeud(self.itineraire[i], self.itineraire[i+1], self.dico_rues, self.carrefour_adjacences)
+                button_etape = tk.Button(self.inner_frame_etapes,text=text_detail_etapes,bg='gray',fg='black', command = lambda idx=i: self.open_window_trajet_middle(idx))
+                button_etape.pack(side = tk.TOP, fill = tk.X)
+                self.l_button_etape.append(button_etape)
+                #self.button_etape.bind("<Button-1>",self.open_window_trajet)
         else :
             messagebox.showinfo("Itinéraire incomplet", "Adresse(s) de départ et/ou d'arrivée non renseignée(s) ou non reconnue(s). \nVeuillez compléter les champs manquants.")
             
@@ -813,8 +1036,13 @@ class MainWindow():
                     #print((co_gps_liste[0][1],co_gps_liste[0][0]),co_trajet[len(co_trajet)-1],co_gps_liste[len(co_gps_liste)-1][1],co_gps_liste[len(co_gps_liste)-1][0])
 
             else :
+                fuv_rue_suiv = self.itineraire[1]
+                co_gps_liste_suiv = self.dico_rues[fuv_rue_suiv[0]][fuv_rue_suiv[1]]['GPS']
+                if co_gps_liste[0] == co_gps_liste_suiv[0] or co_gps_liste[0] == co_gps_liste_suiv[-1]:
+                    co_gps_liste.reverse()
                 for co_gps in co_gps_liste :
                     co_trajet.append((co_gps[1],co_gps[0]))
+
 
         print(co_trajet)
         #ajout d'un marker au debut et fin
@@ -830,23 +1058,36 @@ class MainWindow():
         if msg_user == True :
             #Affiche de nouveau le frame principal
             self.frame_trajet.pack_forget()
+            self.frame_detail_etapes.pack_forget()
             self.frame_princ.pack(fill=tk.Y)
-
-       
+     
     def open_window_trajet(self,event):
         """Fonction callback du bouton commencer le trajet, ouvre la fenetre du trajet carrefour par carrefour
         Args:
             event (dict): the tk event object return after the user event 
         """
-        self.fen_trajet = TopLevelParcour(self.root, self.dico_rues, self.carrefour_adjacences, self.itineraire)    
-
-    def stop_iti(self,event):
-        """Fonction callback du bouton arreter le trajet, ferme la fenetre topLevel trajet si ouverte et revient à la frame principale
+        print(self.fen_trajet)
+        # if self.fen_trajet != None:
+        #     print()
+        #     print("destroy")
+        #     print()
+        #     self.fen_trajet.toplevel_parcour.destroy()
+        self.fen_trajet = TopLevelParcour(self.root, self.dico_rues, self.carrefour_adjacences, self.itineraire, 0)
+        print(self.fen_trajet)
+        
+    def open_window_trajet_middle(self, idx):
+        """Fonction callback du bouton commencer le trajet, ouvre la fenetre du trajet carrefour par carrefour
         Args:
-            event (dict): the tk event object return after the user event
+            event (dict): the tk event object return after the user event 
         """
-        self.frame_trajet.pack_forget()
-        self.frame_princ.pack(fill=tk.Y)
+        print(self.fen_trajet)
+        # if self.fen_trajet != None:
+        #     print()
+        #     print("destroy")
+        #     print()
+        #     self.fen_trajet.toplevel_parcour.destroy()
+        self.fen_trajet = TopLevelParcour(self.root, self.dico_rues, self.carrefour_adjacences, self.itineraire, idx)
+        self.root.after(1000,self.fen_trajet.destroy())       
 
 
     def load_all_datas(self):
@@ -889,12 +1130,13 @@ class TopLevelParams():
         self.slidder_slope_max.pack(fill=tk.X)
 
 class TopLevelParcour():
-    def __init__(self, mainwindow, dico_rues, rues_adjacentes, itineraire):
+    def __init__(self, mainwindow, dico_rues, rues_adjacentes, itineraire, etape):
         self.mainwindow = mainwindow
         self.dico_rues = dico_rues
         self.rues_adjacentes = rues_adjacentes
         self.itineraire = itineraire
-        self.etape = 0
+        self.etape = etape
+        print(f'etape : {self.etape}')
         
         # self.liste_dist_min=[]
         self.liste_echelles = [0.3, 1, 3, 10, 30, 100, 300, 1000, 3000, 10000]
@@ -908,9 +1150,10 @@ class TopLevelParcour():
         self.toplevel_parcour.geometry(f"{self.f_par_width}x{self.f_par_height}")
 
         self.init_widget()
-        self.show_iti(self.itineraire[0],self.itineraire[1],True)
+        self.show_iti(self.itineraire[self.etape],self.itineraire[self.etape+1])
 
         self.toplevel_parcour.mainloop()
+
 
     def init_widget(self):
         
@@ -952,7 +1195,7 @@ class TopLevelParcour():
             for rect in self.liste_rect_echelle :
                 self.main_canvas.delete(rect)
             self.etape -= 1
-            self.show_iti(self.itineraire[self.etape],self.itineraire[self.etape+1], True)
+            self.show_iti(self.itineraire[self.etape],self.itineraire[self.etape+1])
     
     def suivant(self, event):
         self.etape += 1
@@ -969,18 +1212,18 @@ class TopLevelParcour():
         for rect in self.liste_rect_echelle :
             self.main_canvas.delete(rect)
         if self.etape + 1 < len(self.itineraire):
-            self.show_iti(self.itineraire[self.etape],self.itineraire[self.etape+1],True)
+            self.show_iti(self.itineraire[self.etape],self.itineraire[self.etape+1])
         else:
             self.toplevel_parcour.destroy()
             
     def show_iti(self, fuv_tr_pre, fuv_tr_suiv):
         #Recherche des segments adjacents, compilation de leurs co GPS dans un dictionnaire
         #puis passage en co cartesienne
-        dico_fuv_tr_adj, lat_noeud = self.compute_cross(fuv_tr_pre, fuv_tr_suiv)
+        dico_fuv_tr_adj, lat_noeud = compute_cross(fuv_tr_pre, fuv_tr_suiv, self.dico_rues, self.rues_adjacentes)
         #calcul des points qui seront visible et qu'il faut donc prendre en compte pour l'orientation 
-        dist_min = self.calcul_dist_min(dico_fuv_tr_adj)
+        dist_min = calcul_dist_min(dico_fuv_tr_adj)
         i = 1
-        while i < len(dico_fuv_tr_adj["precedent"][fuv_tr_pre]) - 1 and self.distance(dico_fuv_tr_adj["precedent"][fuv_tr_pre], 0, i) < dist_min:
+        while i < len(dico_fuv_tr_adj["precedent"][fuv_tr_pre]) - 1 and distance(dico_fuv_tr_adj["precedent"][fuv_tr_pre], 0, i) < dist_min:
             i += 1
         #Calcul de l'angle entre le segment precedent (premier et dernier point GPS potentiellement dans le cadre final)
         # et l'horizontale (axe x)
@@ -988,18 +1231,18 @@ class TopLevelParcour():
         y_noeud = dico_fuv_tr_adj["precedent"][fuv_tr_pre][0][1]
         x_precedent = dico_fuv_tr_adj["precedent"][fuv_tr_pre][i][0]
         y_precedent = dico_fuv_tr_adj["precedent"][fuv_tr_pre][i][1]
-        alpha_pre = self.calcul_angle(x_noeud, y_noeud, x_precedent, y_precedent)
+        alpha_pre = calcul_angle(x_noeud, y_noeud, x_precedent, y_precedent)
         
         #Rotation du repere pour avoir le segment precedent en bas de l'ecran, vertical
-        dico_fuv_tr_rot = self.rotation_repere(alpha_pre, dico_fuv_tr_adj)
+        dico_fuv_tr_rot = rotation_repere(alpha_pre, dico_fuv_tr_adj)
         #Determination de l'extrémité d'un segment adjacent la plus proche du noeud
         # selon la norme infini (cf. cours de maths)
         # permet d'avoir la vision la plus large possible sans voir d'autres noeuds
-        norme_min = self.calcul_norme_min(dico_fuv_tr_rot)
+        norme_min = calcul_norme_min(dico_fuv_tr_rot)
         xy_noeud = dico_fuv_tr_rot["precedent"][fuv_tr_pre][0]
         #Mise à l'echelle des co en fonction de la distance min
-        dico_fuv_tr_carte = self.xy_cartesien(norme_min, dico_fuv_tr_rot, xy_noeud)
-        
+        dico_fuv_tr_carte = xy_cartesien(norme_min, dico_fuv_tr_rot, xy_noeud, self.width_canvas, self.height_canvas)
+
         #determination des coordonnées du nord
         co_nord = [[370-math.cos(alpha_pre)*20, 30+math.sin(alpha_pre)*20], [370+math.cos(alpha_pre)*20, 30-math.sin(alpha_pre)*20]]
         #determination de l'echelle
@@ -1014,7 +1257,8 @@ class TopLevelParcour():
             i += 1
         #Dessin sur le canvas et affichage des informations
         self.dessine_noeud(dico_fuv_tr_carte, fuv_tr_pre, fuv_tr_suiv, co_nord, cote_echelle, echelle_choisie)
-        self.instructions(dico_fuv_tr_carte, fuv_tr_pre, fuv_tr_suiv)
+        text_instruction = instructions(dico_fuv_tr_carte, fuv_tr_pre, fuv_tr_suiv, self.dico_rues)
+        self.label_instruction.configure(text = str(self.etape) + " : " + text_instruction)
         
     def dessine_noeud(self, dico_fuv_tr_carte, fuv_tr_pre, fuv_tr_suiv, co_nord, cote_echelle, echelle_choisie):
         #on trace les eventuels chemins adjacents
@@ -1046,166 +1290,10 @@ class TopLevelParcour():
                 rect_blanc = self.main_canvas.create_rectangle(390-((2*i+2)*cote_echelle/5),380,390-((2*i+1)*cote_echelle/5),390, fill = "white")
                 self.liste_rect_echelle.append(rect_blanc)        
         self.text_echelle = self.main_canvas.create_text((2*390 - cote_echelle)/2,370,text = str(echelle_choisie)+" m", fill = "white", font ="Calibri 12")
+
+
         
 
-    def instructions(self, dico_fuv_tr_carte, fuv_tr_pre, fuv_tr_suiv):
-        i = 1
-        while i < len(dico_fuv_tr_carte["suivant"][fuv_tr_suiv]) - 1 and self.distance(dico_fuv_tr_carte["suivant"][fuv_tr_suiv], 0, i) < 200*math.sqrt(2)/2:
-            i += 1
-        x_suivant = dico_fuv_tr_carte["suivant"][fuv_tr_suiv][i][0]
-        y_suivant = dico_fuv_tr_carte["suivant"][fuv_tr_suiv][i][1]
-        x_noeud = dico_fuv_tr_carte["precedent"][fuv_tr_pre][0][0]
-        y_noeud = dico_fuv_tr_carte["precedent"][fuv_tr_pre][0][1]
-        
-        texte_instruction = ""
-        if fuv_tr_pre[0] == fuv_tr_suiv[0]:
-            texte_instruction += "Continuer "
-        else:
-            texte_instruction += "Prendre "
-        if self.calcul_angle(x_suivant, y_suivant, x_noeud, y_noeud) < 3*math.pi/8:
-            texte_instruction += "à gauche "
-        elif self.calcul_angle(x_suivant, y_suivant, x_noeud, y_noeud) > 5*math.pi/8:
-            texte_instruction += "à droite "
-        else:
-            texte_instruction += "tout droit "
-        texte_instruction += "sur "
-        if self.dico_rues[fuv_tr_suiv[0]][fuv_tr_suiv[1]].get("Nom","") != "" and self.dico_rues[fuv_tr_suiv[0]][fuv_tr_suiv[1]].get("Nom","") != 'Voie sans denomination' and self.dico_rues[fuv_tr_suiv[0]][fuv_tr_suiv[1]].get("Nom","") != 'Voie sans dénomination':
-            texte_instruction += self.dico_rues[fuv_tr_suiv[0]][fuv_tr_suiv[1]]["Nom"]
-        elif self.dico_rues[fuv_tr_suiv[0]][fuv_tr_suiv[1]].get("Denomination_route","") != "":
-            texte_instruction += self.dico_rues[fuv_tr_suiv[0]][fuv_tr_suiv[1]]["Denomination_route"]
-        else:
-            texte_instruction += "route sans nom"
-        self.label_instruction.configure(text = texte_instruction)
-        
-    def compute_cross(self, fuv_tr_pre, fuv_tr_suiv):
-        #On recup les infos sur les segments precedent et suivant
-        info_pre = self.dico_rues[fuv_tr_pre[0]][fuv_tr_pre[1]]
-        info_suiv = self.dico_rues[fuv_tr_suiv[0]][fuv_tr_suiv[1]]
-        dico_fuv_tr_gps = {"precedent":{},"suivant":{},"adjacents":{}}
-        co_gps_noeud = []
-        co_gps_pre = info_pre['GPS'].copy()
-        co_gps_suiv = info_suiv['GPS'].copy()
-        #on identifie quel cote des segment est lié au noeud
-        #(donc on idetifie aussi les co GPS du noeud)
-        # et on inverse l'ordre des co GPS des segments si besoin
-        # debut de la liste des co GPS d'un segment = le noeud
-        if info_pre['GPS'][0] == info_suiv['GPS'][0] or info_pre['GPS'][0] == info_suiv['GPS'][-1]:
-            co_gps_noeud = info_pre['GPS'][0]
-        else:
-            co_gps_noeud = info_pre['GPS'][-1]
-            co_gps_pre.reverse()
-        if info_suiv['GPS'][0] != co_gps_noeud:
-            co_gps_suiv.reverse()
-        # on met tout ca dans le dico    
-        dico_fuv_tr_gps["suivant"][fuv_tr_suiv] = co_gps_suiv
-        dico_fuv_tr_gps["precedent"][fuv_tr_pre] = co_gps_pre
-        
-        #on identifie quels segments sont adjacents au noeud parmi les adjacents du segment precedent
-        #si on en trouve d'autre que le segment suivant on fait le meme processus que pour le suivant/precedent
-        # (connaitre le sens et renverser l'ordre si besoin, et mettre dans le dico)
-        for fuv_tr in self.rues_adjacentes[fuv_tr_pre]:
-            info_adj = self.dico_rues[fuv_tr[0]][fuv_tr[1]]
-            if co_gps_noeud in info_adj['GPS'] and fuv_tr != fuv_tr_suiv:
-                co_gps_adj = info_adj['GPS'].copy()
-                if info_adj['GPS'][0] != co_gps_noeud:
-                    co_gps_adj.reverse()
-                dico_fuv_tr_gps["adjacents"][fuv_tr] = co_gps_adj.copy()
-        # on faitr un autre dico, construit de la meme facon mais qui aura les co cartésienne et pas GPS
-        # appel a la fonction de conversion
-        dico_fuv_tr_xy = {"precedent":{},"suivant":{},"adjacents":{}}
-        for categorie in dico_fuv_tr_gps:
-            for troncon in dico_fuv_tr_gps[categorie]:
-                for co_gps in dico_fuv_tr_gps[categorie][troncon]:
-                    if troncon not in dico_fuv_tr_xy[categorie].keys():
-                        dico_fuv_tr_xy[categorie][troncon] = [self.xy_lat_long(co_gps[1],co_gps[0],co_gps_noeud[-1])]
-                    else:
-                        dico_fuv_tr_xy[categorie][troncon].append(self.xy_lat_long(co_gps[1],co_gps[0],co_gps_noeud[-1]))
-        return dico_fuv_tr_xy, co_gps_noeud[-1]
-
-    def xy_lat_long(self, latitude, longitude, latitude_ref):
-        #on fait en sorte que la longitude soit comprise entre 0 et 360 et non entre -180 et 180
-        longitude = longitude + 180
-        #on la rapporte de 0 à 2000
-        x = ((longitude*2000*math.cos(math.radians(latitude_ref)))/360)
-        #idem mais la latitude est comprise entre 0 et 180
-        latitude = latitude + 90
-        # donc on la rapporte de 0 à 1000
-        hauteur = (latitude*1000)/180 
-        y = 1000 - hauteur
-        return [x, y]
-    
-    def calcul_angle(self, x1, y1, x2, y2):
-        #tout est dans le titre
-        delta_x = x2 - x1
-        delta_y = y2 - y1
-        alpha = math.pi/2
-        if delta_x != 0:
-            alpha = math.atan(delta_y/delta_x)
-            if delta_x < 0:
-                alpha += math.pi
-        elif delta_y < 0:
-            delta_x += math.pi
-        return alpha
-    
-    def rotation_repere(self, angle, dico_fuv_tr_adj):
-        # on fait un nouveau dico, tjrs sur le meme model et en co cartésienne
-        # mais avec les co cartésienne qui font que le segment precdent est vertical
-        # globalement cest un changement de base de mécanique appliqué à toutes les co
-        dico_fuv_tr_rot = {"precedent":{},"suivant":{},"adjacents":{}}
-        for categorie in dico_fuv_tr_adj:
-            for troncon in dico_fuv_tr_adj[categorie]:
-                for co_xy in dico_fuv_tr_adj[categorie][troncon]:
-                    x_rot = math.sin(angle)*co_xy[0] - math.cos(angle)*co_xy[1]
-                    y_rot = math.cos(angle)*co_xy[0] + math.sin(angle)*co_xy[1]
-                    if troncon not in dico_fuv_tr_rot[categorie].keys():
-                        dico_fuv_tr_rot[categorie][troncon] = [[x_rot, y_rot]]
-                    else:
-                        dico_fuv_tr_rot[categorie][troncon].append([x_rot, y_rot])
-        return dico_fuv_tr_rot
-
-    def xy_cartesien(self, dist_min, dico_fuv_tr_rot, xy_noeud):
-        #on fait un nouveau dico, tjrs sur le meme model et en co cartésienne
-        # mais cette fois ci l'echelle change pour que les co correspondent avec l'affichage dans le canvas
-        dico_fuv_tr_carte = {"precedent":{},"suivant":{},"adjacents":{}}
-        for categorie in dico_fuv_tr_rot:
-            for troncon in dico_fuv_tr_rot[categorie]:
-                for co_xy in dico_fuv_tr_rot[categorie][troncon]:
-                    x_carte = (co_xy[0] - xy_noeud[0] + dist_min)*self.width_canvas/(2*dist_min)
-                    y_carte = (co_xy[1] - xy_noeud[1] + dist_min)*self.height_canvas/(2*dist_min)
-                    if troncon not in dico_fuv_tr_carte[categorie].keys():
-                        dico_fuv_tr_carte[categorie][troncon] = [[x_carte, y_carte]]
-                    else:
-                        dico_fuv_tr_carte[categorie][troncon].append([x_carte, y_carte])
-        return dico_fuv_tr_carte
-    
-    def calcul_norme_min(self, dico_fuv_tr_rot):
-        #Determination de l'extrémité d'un segment adjacent la plus proche du noeud
-        # selon la norme infini (cf. cours de maths)
-        # permet d'avoir la vision la plus large possible sans voir d'autres noeuds
-        norme_min = math.inf
-        for categorie in dico_fuv_tr_rot:
-            for troncon in dico_fuv_tr_rot[categorie]:
-                co_gps = dico_fuv_tr_rot[categorie][troncon]
-                norme = max(abs(co_gps[-1][0]-co_gps[0][0]),abs(co_gps[-1][1]-co_gps[0][1]))
-                if norme < norme_min and norme != 0 :
-                    norme_min = norme
-        return norme_min
-    
-    def calcul_dist_min(self, dico_fuv_tr_adj):
-        #Determination de l'extrémité d'un segment adjacent la plus proche du noeud
-        # selon la norme 2 (cf. cours de maths)
-        # permet de prevoir la vision qu'on aura et les points gps qui seront ou non surement dans la fenetre
-        dist_min = math.inf
-        for categorie in dico_fuv_tr_adj:
-            for troncon in dico_fuv_tr_adj[categorie]:
-                dist = self.distance(dico_fuv_tr_adj[categorie][troncon], 0, -1)
-                if dist < dist_min and dist != 0 :
-                    dist_min = dist
-        return dist_min
-    
-    def distance(self, co_gps, index1, index2):
-        # distance selon la norme 2 entre 2 points definis par leur index dans une liste de coordonnees
-        return math.sqrt((co_gps[index2][0]-co_gps[index1][0])**2+(co_gps[index2][1]-co_gps[index1][1])**2)
         
 
 if __name__ == "__main__":
