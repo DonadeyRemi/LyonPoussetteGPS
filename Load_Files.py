@@ -8,6 +8,7 @@ Created on Mon Mar 27 15:20:19 2023
 import json
 import math
 from queue import PriorityQueue
+import copy
 
 def charger_donnees_troncon():
     f_troncons_geojson = "troncon_trame_viaire.geojson"
@@ -200,7 +201,7 @@ def charger_donnees_centre(dico_adresses_communes):
         dico_adresses_communes[commune]["centre"]={"0":co_centre}
     return dico_adresses_communes
 
-def setup_adjacence_param(rues_adjacentes,dico_rues,largeur_chaussee_m = None ,pente_m = None, revet_chaussee_enl = None ,revet_trot_enl = None ,largeur_trot_max= None):
+def setup_adjacence_param(rues_adjacentes,dico_rues,largeur_chaussee_m = None,largeur_chaussee_min=None ,pente_m = None, revet_chaussee_enl = None ,revet_trot_enl = None ,largeur_trot_max= None,largeur_trot_min=None,importance = None):
     """Réduit le dictionnaire d'adjacence des rues total selon les paramètres de l\'utilisateur donnés par l'application
     Args:
         rues_adjacentes (dict): dictionnaire d'adjajacence totale des rues keys (FUV,Troncon) val [list](FUV,Troncon)
@@ -213,31 +214,57 @@ def setup_adjacence_param(rues_adjacentes,dico_rues,largeur_chaussee_m = None ,p
     Returns:
         dict: le nouveau dictionnaire d'adjacence des rues
     """
-    nv_rues_adjacentes = rues_adjacentes
+    liste_fuv_tron_del = []
     for key in rues_adjacentes.keys():
         FUV = key[0]
         Troncon = key[1]
-        if largeur_chaussee_m != None and dico_rues[FUV][Troncon]["Largeur"] > largeur_chaussee_m:
-            #possibilité de supprimer aussi les référence de ces tuple (fuv,troncon) dans les listes d'adjacences
-            del nv_rues_adjacentes[(FUV,Troncon)]
+        if (largeur_chaussee_m != None and dico_rues[FUV][Troncon].get("Largeur",None) != None ) :
+            if  dico_rues[FUV][Troncon]["Largeur"] > largeur_chaussee_m:
+                #possibilité de supprimer aussi les référence de ces tuple (fuv,troncon) dans les listes d'adjacences
+                liste_fuv_tron_del.append(key)
 
-        if pente_m != None and dico_rues[FUV][Troncon]["Pente_max"] > pente_m :
-            del nv_rues_adjacentes[(FUV,Troncon)]
+        if (largeur_chaussee_min != None and dico_rues[FUV][Troncon].get("Largeur",None) != None) :
+            if dico_rues[FUV][Troncon]["Largeur"] < largeur_chaussee_min:
+                #possibilité de supprimer aussi les référence de ces tuple (fuv,troncon) dans les listes d'adjacences
+                liste_fuv_tron_del.append(key)
 
-        if largeur_trot_max != None and (dico_rues[FUV][Troncon]["Largeur_trottoir_D"] > largeur_trot_max or dico_rues[FUV][Troncon]["Largeur_trottoir_G"] > largeur_trot_max ) :
-            del nv_rues_adjacentes[(FUV,Troncon)]
+        if (pente_m != None and dico_rues[FUV][Troncon].get("Pente_max",None) != None) :
+            if dico_rues[FUV][Troncon]["Pente_max"] > pente_m :
+                liste_fuv_tron_del.append(key)
+
+        if (largeur_trot_max != None and dico_rues[FUV][Troncon].get("Largeur_trottoir_D",None) != None and dico_rues[FUV][Troncon].get("Largeur_trottoir_G",None) != None) :
+            if (dico_rues[FUV][Troncon]["Largeur_trottoir_D"] > largeur_trot_max or dico_rues[FUV][Troncon]["Largeur_trottoir_G"] > largeur_trot_max ) :
+                liste_fuv_tron_del.append(key)
+
+        if (largeur_trot_min != None and dico_rues[FUV][Troncon].get("Largeur_trottoir_D",None) != None and dico_rues[FUV][Troncon].get("Largeur_trottoir_G",None) != None):
+            if (dico_rues[FUV][Troncon]["Largeur_trottoir_D"] < largeur_trot_min or dico_rues[FUV][Troncon]["Largeur_trottoir_G"] < largeur_trot_min ) :
+                liste_fuv_tron_del.append(key)
 
         if revet_chaussee_enl != None :
             for revet_chausee in revet_chaussee_enl :
-                if dico_rues[FUV][Troncon]["Revetement_chaussee"] == revet_chausee :
-                    del nv_rues_adjacentes[(FUV,Troncon)]
+                if dico_rues[FUV][Troncon].get("Revetement_chaussee",None) != None:
+                    if dico_rues[FUV][Troncon]["Revetement_chaussee"] == revet_chausee:
+                        liste_fuv_tron_del.append(key)
 
         if revet_trot_enl != None :
             for revet_trot in revet_trot_enl :
-                if dico_rues[FUV][Troncon]["Revetement_trottoir_D"] == revet_trot or dico_rues[FUV][Troncon]["Revetement_trottoir_G"] == revet_trot :
-                    del nv_rues_adjacentes[(FUV,Troncon)]
+                if (dico_rues[FUV][Troncon].get("Revetement_trottoir_D",None) != None and dico_rues[FUV][Troncon].get("Revetement_trottoir_G",None) != None) :
+                    if dico_rues[FUV][Troncon]["Revetement_trottoir_D"] == revet_trot or dico_rues[FUV][Troncon]["Revetement_trottoir_G"] == revet_trot:
+                        liste_fuv_tron_del.append(key)
 
-    return nv_rues_adjacentes
+        if importance != None or len(importance) != 0 :
+            for ele in importance:
+                if dico_rues[FUV][Troncon].get("Importance",None) != None :
+                    if dico_rues[FUV][Troncon]["Importance"].split(" ")[0] == ele :
+                        liste_fuv_tron_del.append(key)
+
+    #suppression des code fuv_troncon qui ne peuvent pas être pris
+    for couple_del in liste_fuv_tron_del :
+        if rues_adjacentes.get(couple_del,None) != None :
+            del rues_adjacentes[couple_del]
+
+
+    return rues_adjacentes
 
 def give_troncon_nearest_gps(co_gps_user,dico_rues):
     """Trouve le couple troncon + FUV le plus proche des coordonnées gps fournis par l'utilisateur

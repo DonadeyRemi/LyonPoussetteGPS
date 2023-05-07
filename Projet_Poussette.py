@@ -82,33 +82,28 @@ class MainWindow():
 
         self.frame_opt = tk.Frame(self.frame_princ,padx=5,pady=5)
 
-        self.choice_poussette = tk.IntVar()
-        self.check_button_poussette = tk.Checkbutton(self.frame_opt,
+        self.choice_vehicule = tk.IntVar()
+        self.check_button_poussette = tk.Radiobutton(self.frame_opt,
                                                              bg = 'gray', fg = 'black', anchor = 'w',
                                                              text = "  Poussette/Fauteil",
-                                                             onvalue = True, offvalue = False,
-                                                             variable = self.choice_poussette) 
+                                                             value=0,
+                                                             variable = self.choice_vehicule) 
         self.check_button_poussette.pack(side=tk.TOP,fill=tk.X)
 
-        self.choice_bike = tk.IntVar()
-        self.check_button_bike = tk.Checkbutton(self.frame_opt,
+        self.check_button_bike = tk.Radiobutton(self.frame_opt,
                                                 bg='gray', fg = 'black', anchor = 'w',
-                                                text = "          Vélo", onvalue=True,
-                                                offvalue = False, variable = self.choice_bike)
+                                                text = "          Vélo", value=1, variable = self.choice_vehicule)
         self.check_button_bike.pack(side=tk.TOP,fill=tk.X)
 
-        self.choice_voiture = tk.IntVar()
-        self.check_button_voiture = tk.Checkbutton(self.frame_opt,
+        self.check_button_voiture = tk.Radiobutton(self.frame_opt,
                                                    bg = 'gray',fg = 'black', text = "        Voiture",
-                                                   onvalue = True, anchor = 'w',
-                                                   offvalue=False, variable = self.choice_voiture)
+                                                    anchor = 'w',
+                                                   value=2, variable = self.choice_vehicule)
         self.check_button_voiture.pack(side=tk.TOP,fill=tk.X)
 
-        self.choice_foot = tk.IntVar()
-        self.check_button_foot = tk.Checkbutton(self.frame_opt,
+        self.check_button_foot = tk.Radiobutton(self.frame_opt,
                                                 bg='gray', fg = 'black', anchor = 'w',
-                                                text="          Pied", onvalue = True, 
-                                                offvalue = False, variable = self.choice_foot)
+                                                text="          Pied", value=3, variable = self.choice_vehicule)
         self.check_button_foot.pack(side=tk.TOP,fill=tk.X)
 
         self.frame_opt.pack(side=tk.TOP,fill=tk.X)
@@ -280,7 +275,6 @@ class MainWindow():
         print("Vous avez cliquez sur le boutons des parametres avancé")
         print(f"Ville de départ {self.var_entry_start.get()}")
         print(f"Ville d'arrivee {self.var_entry_end.get()}")
-        print(f"Choix Poussette {self.choice_poussette.get()}")
 
         self.dialog_params_av = TopLevelParams(self.root)
 
@@ -289,8 +283,29 @@ class MainWindow():
         Args:
             event (dict): the tk event object return after the user event
         """
+
+        if self.choice_vehicule.get() == 0 :
+            #l'utilisateur choisi poussette fauteil
+            self.carrefour_adjacences_choix = Load_Files.setup_adjacence_param(self.carrefour_adjacences,self.dico_rues,pente_m=2,largeur_trot_min=1.5,importance=["Grande","Moyenne"])
+
+        elif self.choice_vehicule.get() == 1 :
+            #user a choisi velo
+            self.carrefour_adjacences_choix = Load_Files.setup_adjacence_param(self.carrefour_adjacences,self.dico_rues,importance=["Grande"])
+
+        elif self.choice_vehicule.get() == 2 :
+            #user a choisi voiture
+            self.carrefour_adjacences_choix = Load_Files.setup_adjacence_param(self.carrefour_adjacences,self.dico_rues,importance=["Petite"],largeur_chaussee_min=2.5)
+
+        elif self.choice_vehicule.get() == 3 :
+            #user a choisi a pied
+            self.carrefour_adjacences_choix = Load_Files.setup_adjacence_param(self.carrefour_adjacences,self.dico_rues,importance=["Grande","Moyenne"],largeur_trot_min=0.5)
+
+        else :
+            self.carrefour_adjacences_choix = self.carrefour_adjacences
+
+        
         if self.depart != (None,None) and self.arrivee != (None,None) and self.depart != self.arrivee:
-            self.itineraire, self.dist_trajet = Load_Files.a_star(self.depart,self.arrivee,self.carrefour_adjacences, self.dico_rues)
+            self.itineraire, self.dist_trajet = Load_Files.a_star(self.depart,self.arrivee,self.carrefour_adjacences_choix, self.dico_rues)
             print(self.dico_rues[self.itineraire[0][0]][self.itineraire[0][1]]['GPS'])
             #on cache la frame principale et affiche la frame itineraire
             self.frame_princ.pack_forget()
@@ -335,6 +350,14 @@ class MainWindow():
             #Affiche de nouveau le frame principal
             self.frame_trajet.pack_forget()
             self.frame_princ.pack(fill=tk.Y)
+
+            # on enleve le trajet actuel
+            """
+            self.map_widget.delete_all_path()
+            self.map_widget.delete_all_marker()
+            self.map_widget.set_position(45.76177569754233, 4.8358160526802685)  #on centre sur Lyon
+            self.map_widget.set_zoom(11)
+            """
         
     def open_window_trajet(self,event):
         """Fonction callback du bouton commencer le trajet, ouvre la fenetre du trajet carrefour par carrefour
@@ -350,6 +373,12 @@ class MainWindow():
         """
         self.frame_trajet.pack_forget()
         self.frame_princ.pack(fill=tk.Y)
+
+        # on enleve le trajet actuel
+        self.map_widget.delete_all_path()
+        self.map_widget.delete_all_marker()
+        self.map_widget.set_position(45.76177569754233, 4.8358160526802685)  #on centre sur Lyon
+        self.map_widget.set_zoom(11)
 
     def load_all_datas(self):
         self.dico_noeuds, self.dico_rues = Load_Files.charger_donnees_troncon()
