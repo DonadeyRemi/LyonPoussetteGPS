@@ -8,7 +8,6 @@ Created on Mon Mar 27 15:20:19 2023
 import json
 import math
 from queue import PriorityQueue
-import copy
 
 def charger_donnees_troncon():
     f_troncons_geojson = "troncon_trame_viaire.geojson"
@@ -201,7 +200,7 @@ def charger_donnees_centre(dico_adresses_communes):
         dico_adresses_communes[commune]["centre"]={"0":co_centre}
     return dico_adresses_communes
 
-def setup_adjacence_param(rues_adjacentes,dico_rues,largeur_chaussee_m = None,largeur_chaussee_min=None ,pente_m = None, revet_chaussee_enl = None ,revet_trot_enl = None ,largeur_trot_max= None,largeur_trot_min=None,importance = None):
+def setup_adjacence_param(rues_adjacentes,dico_rues,largeur_chaussee_m = None ,pente_m = None, revet_chaussee_enl = None ,revet_trot_enl = None ,largeur_trot_max= None):
     """Réduit le dictionnaire d'adjacence des rues total selon les paramètres de l\'utilisateur donnés par l'application
     Args:
         rues_adjacentes (dict): dictionnaire d'adjajacence totale des rues keys (FUV,Troncon) val [list](FUV,Troncon)
@@ -214,57 +213,31 @@ def setup_adjacence_param(rues_adjacentes,dico_rues,largeur_chaussee_m = None,la
     Returns:
         dict: le nouveau dictionnaire d'adjacence des rues
     """
-    liste_fuv_tron_del = []
+    nv_rues_adjacentes = rues_adjacentes
     for key in rues_adjacentes.keys():
         FUV = key[0]
         Troncon = key[1]
-        if (largeur_chaussee_m != None and dico_rues[FUV][Troncon].get("Largeur",None) != None ) :
-            if  dico_rues[FUV][Troncon]["Largeur"] > largeur_chaussee_m:
-                #possibilité de supprimer aussi les référence de ces tuple (fuv,troncon) dans les listes d'adjacences
-                liste_fuv_tron_del.append(key)
+        if largeur_chaussee_m != None and dico_rues[FUV][Troncon]["Largeur"] > largeur_chaussee_m:
+            #possibilité de supprimer aussi les référence de ces tuple (fuv,troncon) dans les listes d'adjacences
+            del nv_rues_adjacentes[(FUV,Troncon)]
 
-        if (largeur_chaussee_min != None and dico_rues[FUV][Troncon].get("Largeur",None) != None) :
-            if dico_rues[FUV][Troncon]["Largeur"] < largeur_chaussee_min:
-                #possibilité de supprimer aussi les référence de ces tuple (fuv,troncon) dans les listes d'adjacences
-                liste_fuv_tron_del.append(key)
+        if pente_m != None and dico_rues[FUV][Troncon]["Pente_max"] > pente_m :
+            del nv_rues_adjacentes[(FUV,Troncon)]
 
-        if (pente_m != None and dico_rues[FUV][Troncon].get("Pente_max",None) != None) :
-            if dico_rues[FUV][Troncon]["Pente_max"] > pente_m :
-                liste_fuv_tron_del.append(key)
-
-        if (largeur_trot_max != None and dico_rues[FUV][Troncon].get("Largeur_trottoir_D",None) != None and dico_rues[FUV][Troncon].get("Largeur_trottoir_G",None) != None) :
-            if (dico_rues[FUV][Troncon]["Largeur_trottoir_D"] > largeur_trot_max or dico_rues[FUV][Troncon]["Largeur_trottoir_G"] > largeur_trot_max ) :
-                liste_fuv_tron_del.append(key)
-
-        if (largeur_trot_min != None and dico_rues[FUV][Troncon].get("Largeur_trottoir_D",None) != None and dico_rues[FUV][Troncon].get("Largeur_trottoir_G",None) != None):
-            if (dico_rues[FUV][Troncon]["Largeur_trottoir_D"] < largeur_trot_min or dico_rues[FUV][Troncon]["Largeur_trottoir_G"] < largeur_trot_min ) :
-                liste_fuv_tron_del.append(key)
+        if largeur_trot_max != None and (dico_rues[FUV][Troncon]["Largeur_trottoir_D"] > largeur_trot_max or dico_rues[FUV][Troncon]["Largeur_trottoir_G"] > largeur_trot_max ) :
+            del nv_rues_adjacentes[(FUV,Troncon)]
 
         if revet_chaussee_enl != None :
             for revet_chausee in revet_chaussee_enl :
-                if dico_rues[FUV][Troncon].get("Revetement_chaussee",None) != None:
-                    if dico_rues[FUV][Troncon]["Revetement_chaussee"] == revet_chausee:
-                        liste_fuv_tron_del.append(key)
+                if dico_rues[FUV][Troncon]["Revetement_chaussee"] == revet_chausee :
+                    del nv_rues_adjacentes[(FUV,Troncon)]
 
         if revet_trot_enl != None :
             for revet_trot in revet_trot_enl :
-                if (dico_rues[FUV][Troncon].get("Revetement_trottoir_D",None) != None and dico_rues[FUV][Troncon].get("Revetement_trottoir_G",None) != None) :
-                    if dico_rues[FUV][Troncon]["Revetement_trottoir_D"] == revet_trot or dico_rues[FUV][Troncon]["Revetement_trottoir_G"] == revet_trot:
-                        liste_fuv_tron_del.append(key)
+                if dico_rues[FUV][Troncon]["Revetement_trottoir_D"] == revet_trot or dico_rues[FUV][Troncon]["Revetement_trottoir_G"] == revet_trot :
+                    del nv_rues_adjacentes[(FUV,Troncon)]
 
-        if importance != None or len(importance) != 0 :
-            for ele in importance:
-                if dico_rues[FUV][Troncon].get("Importance",None) != None :
-                    if dico_rues[FUV][Troncon]["Importance"].split(" ")[0] == ele :
-                        liste_fuv_tron_del.append(key)
-
-    #suppression des code fuv_troncon qui ne peuvent pas être pris
-    for couple_del in liste_fuv_tron_del :
-        if rues_adjacentes.get(couple_del,None) != None :
-            del rues_adjacentes[couple_del]
-
-
-    return rues_adjacentes
+    return nv_rues_adjacentes
 
 def give_troncon_nearest_gps(co_gps_user,dico_rues):
     """Trouve le couple troncon + FUV le plus proche des coordonnées gps fournis par l'utilisateur
@@ -498,6 +471,194 @@ def a_star(start, goal, rues_adjacentes, dico_rues):
 
     print ("Le chemin le plus court est : ", path,', Pour une distance de ', dist_path)
     return path, dist_path
+
+def compute_cross(fuv_tr_pre, fuv_tr_suiv, dico_rues, rues_adjacentes):
+    #On recup les infos sur les segments precedent et suivant
+    info_pre = dico_rues[fuv_tr_pre[0]][fuv_tr_pre[1]]
+    info_suiv = dico_rues[fuv_tr_suiv[0]][fuv_tr_suiv[1]]
+    dico_fuv_tr_gps = {"precedent":{},"suivant":{},"adjacents":{}}
+    co_gps_noeud = []
+    co_gps_pre = info_pre['GPS'].copy()
+    co_gps_suiv = info_suiv['GPS'].copy()
+    #on identifie quel cote des segment est lié au noeud
+    #(donc on idetifie aussi les co GPS du noeud)
+    # et on inverse l'ordre des co GPS des segments si besoin
+    # debut de la liste des co GPS d'un segment = le noeud
+    if info_pre['GPS'][0] == info_suiv['GPS'][0] or info_pre['GPS'][0] == info_suiv['GPS'][-1]:
+        co_gps_noeud = info_pre['GPS'][0]
+    else:
+        co_gps_noeud = info_pre['GPS'][-1]
+        co_gps_pre.reverse()
+    if info_suiv['GPS'][0] != co_gps_noeud:
+        co_gps_suiv.reverse()
+    # on met tout ca dans le dico    
+    dico_fuv_tr_gps["suivant"][fuv_tr_suiv] = co_gps_suiv
+    dico_fuv_tr_gps["precedent"][fuv_tr_pre] = co_gps_pre
+
+    #on identifie quels segments sont adjacents au noeud parmi les adjacents du segment precedent
+    #si on en trouve d'autre que le segment suivant on fait le meme processus que pour le suivant/precedent
+    # (connaitre le sens et renverser l'ordre si besoin, et mettre dans le dico)
+    for fuv_tr in rues_adjacentes[fuv_tr_pre]:
+        info_adj = dico_rues[fuv_tr[0]][fuv_tr[1]]
+        if co_gps_noeud in info_adj['GPS'] and fuv_tr != fuv_tr_suiv:
+            co_gps_adj = info_adj['GPS'].copy()
+            if info_adj['GPS'][0] != co_gps_noeud:
+                co_gps_adj.reverse()
+            dico_fuv_tr_gps["adjacents"][fuv_tr] = co_gps_adj.copy()
+    # on faitr un autre dico, construit de la meme facon mais qui aura les co cartésienne et pas GPS
+    # appel a la fonction de conversion
+    dico_fuv_tr_xy = {"precedent":{},"suivant":{},"adjacents":{}}
+    for categorie in dico_fuv_tr_gps:
+        for troncon in dico_fuv_tr_gps[categorie]:
+            for co_gps in dico_fuv_tr_gps[categorie][troncon]:
+                if troncon not in dico_fuv_tr_xy[categorie].keys():
+                    dico_fuv_tr_xy[categorie][troncon] = [xy_lat_long(co_gps[1],co_gps[0],co_gps_noeud[-1])]
+                else:
+                    dico_fuv_tr_xy[categorie][troncon].append(xy_lat_long(co_gps[1],co_gps[0],co_gps_noeud[-1]))
+    return dico_fuv_tr_xy, co_gps_noeud[-1]
+
+def xy_lat_long(latitude, longitude, latitude_ref):
+    #on fait en sorte que la longitude soit comprise entre 0 et 360 et non entre -180 et 180
+    longitude = longitude + 180
+    #on la rapporte de 0 à 2000
+    x = ((longitude*2000*math.cos(math.radians(latitude_ref)))/360)
+    #idem mais la latitude est comprise entre 0 et 180
+    latitude = latitude + 90
+    # donc on la rapporte de 0 à 1000
+    hauteur = (latitude*1000)/180 
+    y = 1000 - hauteur
+    return [x, y]
+
+def calcul_angle(x1, y1, x2, y2):
+    #tout est dans le titre
+    delta_x = x2 - x1
+    delta_y = y2 - y1
+    alpha = math.pi/2
+    if delta_x != 0:
+        alpha = math.atan(delta_y/delta_x)
+        if delta_x < 0:
+            alpha += math.pi
+    elif delta_y < 0:
+        delta_x += math.pi
+    return alpha
+
+def rotation_repere(angle, dico_fuv_tr_adj):
+    # on fait un nouveau dico, tjrs sur le meme model et en co cartésienne
+    # mais avec les co cartésienne qui font que le segment precdent est vertical
+    # globalement cest un changement de base de mécanique appliqué à toutes les co
+    dico_fuv_tr_rot = {"precedent":{},"suivant":{},"adjacents":{}}
+    for categorie in dico_fuv_tr_adj:
+        for troncon in dico_fuv_tr_adj[categorie]:
+            for co_xy in dico_fuv_tr_adj[categorie][troncon]:
+                x_rot = math.sin(angle)*co_xy[0] - math.cos(angle)*co_xy[1]
+                y_rot = math.cos(angle)*co_xy[0] + math.sin(angle)*co_xy[1]
+                if troncon not in dico_fuv_tr_rot[categorie].keys():
+                    dico_fuv_tr_rot[categorie][troncon] = [[x_rot, y_rot]]
+                else:
+                    dico_fuv_tr_rot[categorie][troncon].append([x_rot, y_rot])
+    return dico_fuv_tr_rot
+
+def xy_cartesien(dist_min, dico_fuv_tr_rot, xy_noeud, width_canvas, height_canvas):
+    #on fait un nouveau dico, tjrs sur le meme model et en co cartésienne
+    # mais cette fois ci l'echelle change pour que les co correspondent avec l'affichage dans le canvas
+    dico_fuv_tr_carte = {"precedent":{},"suivant":{},"adjacents":{}}
+    for categorie in dico_fuv_tr_rot:
+        for troncon in dico_fuv_tr_rot[categorie]:
+            for co_xy in dico_fuv_tr_rot[categorie][troncon]:
+                x_carte = (co_xy[0] - xy_noeud[0] + dist_min)*width_canvas/(2*dist_min)
+                y_carte = (co_xy[1] - xy_noeud[1] + dist_min)*height_canvas/(2*dist_min)
+                if troncon not in dico_fuv_tr_carte[categorie].keys():
+                    dico_fuv_tr_carte[categorie][troncon] = [[x_carte, y_carte]]
+                else:
+                    dico_fuv_tr_carte[categorie][troncon].append([x_carte, y_carte])
+    return dico_fuv_tr_carte
+
+def calcul_norme_min(dico_fuv_tr_rot):
+    #Determination de l'extrémité d'un segment adjacent la plus proche du noeud
+    # selon la norme infini (cf. cours de maths)
+    # permet d'avoir la vision la plus large possible sans voir d'autres noeuds
+    norme_min = math.inf
+    for categorie in dico_fuv_tr_rot:
+        for troncon in dico_fuv_tr_rot[categorie]:
+            co_gps = dico_fuv_tr_rot[categorie][troncon]
+            norme = max(abs(co_gps[-1][0]-co_gps[0][0]),abs(co_gps[-1][1]-co_gps[0][1]))
+            if norme < norme_min and norme != 0 :
+                norme_min = norme
+    return norme_min
+
+def calcul_dist_min(dico_fuv_tr_adj):
+    #Determination de l'extrémité d'un segment adjacent la plus proche du noeud
+    # selon la norme 2 (cf. cours de maths)
+    # permet de prevoir la vision qu'on aura et les points gps qui seront ou non surement dans la fenetre
+    dist_min = math.inf
+    for categorie in dico_fuv_tr_adj:
+        for troncon in dico_fuv_tr_adj[categorie]:
+            dist = distance(dico_fuv_tr_adj[categorie][troncon], 0, -1)
+            if dist < dist_min and dist != 0 :
+                dist_min = dist
+    return dist_min
+
+def distance(co_gps, index1, index2):
+    # distance selon la norme 2 entre 2 points definis par leur index dans une liste de coordonnees
+    return math.sqrt((co_gps[index2][0]-co_gps[index1][0])**2+(co_gps[index2][1]-co_gps[index1][1])**2)
+
+def instructions(dico_fuv_tr_carte, fuv_tr_pre, fuv_tr_suiv, dico_rues):
+    i = 1
+    while i < len(dico_fuv_tr_carte["suivant"][fuv_tr_suiv]) - 1 and distance(dico_fuv_tr_carte["suivant"][fuv_tr_suiv], 0, i) < 200*math.sqrt(2)/2:
+        i += 1
+    x_suivant = dico_fuv_tr_carte["suivant"][fuv_tr_suiv][i][0]
+    y_suivant = dico_fuv_tr_carte["suivant"][fuv_tr_suiv][i][1]
+    x_noeud = dico_fuv_tr_carte["precedent"][fuv_tr_pre][0][0]
+    y_noeud = dico_fuv_tr_carte["precedent"][fuv_tr_pre][0][1]
+
+    texte_instruction = ""
+    if fuv_tr_pre[0] == fuv_tr_suiv[0]:
+        texte_instruction += "Continuer "
+    else:
+        texte_instruction += "Prendre "
+    if calcul_angle(x_suivant, y_suivant, x_noeud, y_noeud) < 3*math.pi/8:
+        texte_instruction += "à gauche "
+    elif calcul_angle(x_suivant, y_suivant, x_noeud, y_noeud) > 5*math.pi/8:
+        texte_instruction += "à droite "
+    else:
+        texte_instruction += "tout droit "
+    texte_instruction += "sur "
+    if dico_rues[fuv_tr_suiv[0]][fuv_tr_suiv[1]].get("Nom","") != "" and dico_rues[fuv_tr_suiv[0]][fuv_tr_suiv[1]].get("Nom","") != 'Voie sans denomination' and dico_rues[fuv_tr_suiv[0]][fuv_tr_suiv[1]].get("Nom","") != 'Voie sans dénomination':
+        texte_instruction += dico_rues[fuv_tr_suiv[0]][fuv_tr_suiv[1]]["Nom"]
+    elif dico_rues[fuv_tr_suiv[0]][fuv_tr_suiv[1]].get("Denomination_route","") != "":
+        texte_instruction += dico_rues[fuv_tr_suiv[0]][fuv_tr_suiv[1]]["Denomination_route"]
+    else:
+        texte_instruction += "route sans nom"
+    return texte_instruction
+
+def consigne_noeud(fuv_tr_pre, fuv_tr_suiv, dico_rues, rues_adjacentes):
+    #Recherche des segments adjacents, compilation de leurs co GPS dans un dictionnaire
+    #puis passage en co cartesienne
+    dico_fuv_tr_adj, lat_noeud = compute_cross(fuv_tr_pre, fuv_tr_suiv, dico_rues, rues_adjacentes)
+    #calcul des points qui seront visible et qu'il faut donc prendre en compte pour l'orientation 
+    dist_min = calcul_dist_min(dico_fuv_tr_adj)
+    i = 1
+    while i < len(dico_fuv_tr_adj["precedent"][fuv_tr_pre]) - 1 and distance(dico_fuv_tr_adj["precedent"][fuv_tr_pre], 0, i) < dist_min:
+        i += 1
+    #Calcul de l'angle entre le segment precedent (premier et dernier point GPS potentiellement dans le cadre final)
+    # et l'horizontale (axe x)
+    x_noeud = dico_fuv_tr_adj["precedent"][fuv_tr_pre][0][0]
+    y_noeud = dico_fuv_tr_adj["precedent"][fuv_tr_pre][0][1]
+    x_precedent = dico_fuv_tr_adj["precedent"][fuv_tr_pre][i][0]
+    y_precedent = dico_fuv_tr_adj["precedent"][fuv_tr_pre][i][1]
+    alpha_pre = calcul_angle(x_noeud, y_noeud, x_precedent, y_precedent)
+    #Rotation du repere pour avoir le segment precedent en bas de l'ecran, vertical
+    dico_fuv_tr_rot = rotation_repere(alpha_pre, dico_fuv_tr_adj)
+    #Determination de l'extrémité d'un segment adjacent la plus proche du noeud
+    # selon la norme infini (cf. cours de maths)
+    # permet d'avoir la vision la plus large possible sans voir d'autres noeuds
+    norme_min = calcul_norme_min(dico_fuv_tr_rot)
+    xy_noeud = dico_fuv_tr_rot["precedent"][fuv_tr_pre][0]
+    #Mise à l'echelle des co en fonction de la distance min
+    dico_fuv_tr_carte = xy_cartesien(norme_min, dico_fuv_tr_rot, xy_noeud, 400, 400)
+    #détermination de la consigne
+    text_instruction = instructions(dico_fuv_tr_carte, fuv_tr_pre, fuv_tr_suiv, dico_rues)
+    return text_instruction
 
 if __name__ == "__main__" :
     adj,rue = charger_donnees_troncon()
