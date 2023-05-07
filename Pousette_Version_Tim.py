@@ -13,7 +13,6 @@ import math
 from tkinter import ttk
 from tkinter.ttk import Separator
 from tkinter import messagebox
-from tkinter import scrolledtext #!!!
 from tkscrolledframe import ScrolledFrame
 
 #import Load_Files
@@ -686,8 +685,27 @@ def consigne_noeud(fuv_tr_pre, fuv_tr_suiv, dico_rues, rues_adjacentes):
 
 class MainWindow():
     def __init__(self) :
+        ########################### Fenetre principale #########################
         # on initialise d'abord la fenetre principale sur un affichage de chargement, le temps que les donnees se chargent
         self.root = tk.Tk()
+        self.initWidget_load()
+        # la fonction load_all_datas est lancée au bout de 100ms après le démarage (cf. ligne 679 (plus à jour))
+        self.fen_trajet = []
+        self.itineraire = []
+        self.depart = (None,None)
+        self.arrivee = (None,None)
+        self.dist_trajet = 0
+        self.saisie_user_start = ""
+        self.saisie_user_end = ""
+        ############################ Fenetre trajet ##########################
+        self.toplevel_parcour = None
+        self.etape = 0
+        self.liste_echelles = [0.3, 1, 3, 10, 30, 100, 300, 1000, 3000, 10000]
+        ########################## Fenetre parametres #########################
+        self.toplevel_params = None
+        
+    ########################### Fenetre principale #########################
+    def initWidget_load(self):
         self.root.geometry("300x200")
         self.loading_label_1 = tk.Label(self.root, text = "Chargement des données", font = "Calibri 16")
         self.loading_label_1.pack()
@@ -696,20 +714,8 @@ class MainWindow():
         self.progress_bar = ttk.Progressbar(self.root, orient = tk.HORIZONTAL, length = 100, mode = 'determinate')
         self.progress_bar.pack()
         self.root.title("Lyonyroule")
-        # la fonction load_all_datas est lancée au bout de 100ms après le démarage (cf. ligne 679 (plus à jour))
-        #itineraire fictif pour test fenetre trajet
-        #self.itineraire = [('22416', 'T54924'),('37324', 'T54925'),('37324', 'T54926'),('36078', 'T23765')]
-        #self.itineraire = [('33788','T27222'),('33787','T27233'),('33787','T35503'),('33785','T35505'),('33786','T27243'),('33793','T27247'),('33792','T27266'),('33796','T27274'),('33796','T27275'),('33794','T27269')]
-        self.fen_trajet = None
-        self.itineraire = []
-        self.depart = (None,None)
-        self.arrivee = (None,None)
-        self.dist_trajet = 0
-        self.saisie_user_start = ""
-        self.saisie_user_end = ""
-        #self.itineraire.reverse()
 
-    def initWidget(self):
+    def initWidget_main(self):
         self.loading_label_1.destroy()
         self.loading_label_2.destroy()
         self.progress_bar.destroy()
@@ -728,11 +734,6 @@ class MainWindow():
         self.frame_princ = tk.Frame(self.root)
 
         self.frame_dest = tk.Frame(self.frame_princ,padx=5,pady=5)
-
-        # self.var_entry_start = tk.StringVar(value="Départ")
-        # self.start_entry = tk.Entry(self.frame_dest,bg='gray',fg='black',textvariable=self.var_entry_start)
-        # self.start_entry.pack(side=tk.TOP,fill=tk.X)
-        # self.start_entry.bind("<Button-1>",self.effacer_prop_start)
         
         self.liste_depart = []
         self.var_entry_start = tk.StringVar(value = "Départ")
@@ -839,9 +840,6 @@ class MainWindow():
 
         self.frame_trajet.pack_forget()
         self.frame_detail_etapes.pack_forget()
-    
-    # def choix_adresse(self):
-    #     print("ok")
 
     def loop(self):
         self.root.mainloop()
@@ -992,7 +990,11 @@ class MainWindow():
         print(f"Ville d'arrivee {self.var_entry_end.get()}")
         print(f"Choix Poussette {self.choice_poussette.get()}")
 
-        self.dialog_params_av = TopLevelParams(self.root)
+        # self.dialog_params_av = TopLevelParams(self.root)
+        if (self.toplevel_params != None) :
+            self.toplevel_params.destroy()
+        self.toplevel_params = tk.Toplevel(self.root)
+        self.init_widget_param()
 
     def start_research(self,event):
         """Fonction callback du bouton de calcul de l'itineraire, il lance la recherche de l'itineraire
@@ -1000,6 +1002,8 @@ class MainWindow():
             event (dict): the tk event object return after the user event
         """
         if self.depart != (None,None) and self.arrivee != (None,None) and self.depart != self.arrivee:
+            if (self.toplevel_params != None) :
+                self.toplevel_params.destroy()
             self.itineraire, self.dist_trajet = a_star(self.depart,self.arrivee,self.carrefour_adjacences, self.dico_rues)
             print(self.dico_rues[self.itineraire[0][0]][self.itineraire[0][1]]['GPS'])
             #on cache la frame principale et affiche la frame itineraire
@@ -1043,7 +1047,6 @@ class MainWindow():
                 for co_gps in co_gps_liste :
                     co_trajet.append((co_gps[1],co_gps[0]))
 
-
         print(co_trajet)
         #ajout d'un marker au debut et fin
         marker_debut = self.map_widget.set_marker(co_trajet.pop(0)[0],co_trajet.pop(0)[1],text="Start")
@@ -1051,11 +1054,12 @@ class MainWindow():
         co_trajet.insert(0,marker_debut.position)
         co_trajet.insert(len(co_trajet)-1,marker_fin.position)
         self.map_widget.set_path(co_trajet)
-
         
     def bouton_change_iti(self,event):
         msg_user = messagebox.askyesno("Changer d'itineraire ?","Voulez vous vraiment changer d'itinéraire ?\n Celui-ci sera perdu")
         if msg_user == True :
+            if (self.toplevel_parcour != None) :
+                self.toplevel_parcour.destroy() 
             #Affiche de nouveau le frame principal
             self.frame_trajet.pack_forget()
             self.frame_detail_etapes.pack_forget()
@@ -1066,29 +1070,24 @@ class MainWindow():
         Args:
             event (dict): the tk event object return after the user event 
         """
-        print(self.fen_trajet)
-        # if self.fen_trajet != None:
-        #     print()
-        #     print("destroy")
-        #     print()
-        #     self.fen_trajet.toplevel_parcour.destroy()
-        self.fen_trajet = TopLevelParcour(self.root, self.dico_rues, self.carrefour_adjacences, self.itineraire, 0)
-        print(self.fen_trajet)
+        self.etape = 0
+        if (self.toplevel_parcour != None) :
+            self.toplevel_parcour.destroy()
+        self.toplevel_parcour = tk.Toplevel(self.root)
+        self.init_widget_parcour()
+        self.show_iti(self.itineraire[self.etape],self.itineraire[self.etape+1])
         
     def open_window_trajet_middle(self, idx):
         """Fonction callback du bouton commencer le trajet, ouvre la fenetre du trajet carrefour par carrefour
         Args:
             event (dict): the tk event object return after the user event 
         """
-        print(self.fen_trajet)
-        # if self.fen_trajet != None:
-        #     print()
-        #     print("destroy")
-        #     print()
-        #     self.fen_trajet.toplevel_parcour.destroy()
-        self.fen_trajet = TopLevelParcour(self.root, self.dico_rues, self.carrefour_adjacences, self.itineraire, idx)
-        self.root.after(1000,self.fen_trajet.destroy())       
-
+        self.etape = idx
+        if (self.toplevel_parcour != None) :
+            self.toplevel_parcour.destroy()
+        self.toplevel_parcour = tk.Toplevel(self.root)
+        self.init_widget_parcour()
+        self.show_iti(self.itineraire[self.etape],self.itineraire[self.etape+1])
 
     def load_all_datas(self):
         self.dico_noeuds, self.dico_rues = charger_donnees_troncon()
@@ -1110,17 +1109,11 @@ class MainWindow():
         self.progress_bar['value'] = 100
         self.root.update_idletasks()
         #une fois le chargement de donnees effectue, on met a jour l'affichage pour afficher le menu d'acceuil
-        self.root.after(500,self.initWidget) 
-
-class TopLevelParams():
-    def __init__(self,mainwindow):
-        self.mainwindow = mainwindow
-        self.toplevel_params = tk.Toplevel(self.mainwindow)
+        self.root.after(500,self.initWidget_main) 
+    
+    ########################### Fenetre parametres #########################
         
-        self.init_widget()
-        self.toplevel_params.mainloop()
-        
-    def init_widget(self):
+    def init_widget_param(self):
         self.var_width_road = tk.DoubleVar(value=5.0)
         self.slidder_width_road = tk.Scale(self.toplevel_params,from_=0,to=20,variable=self.var_width_road,tickinterval=5,resolution=0.5,label="Seuil largeur de la chaussée",orient=tk.HORIZONTAL)
         self.slidder_width_road.pack(fill=tk.X)
@@ -1129,33 +1122,14 @@ class TopLevelParams():
         self.slidder_slope_max = tk.Scale(self.toplevel_params,label="Pente maximale",from_=0,to=12,resolution=0.1,tickinterval=1.0,orient=tk.HORIZONTAL,variable=self.var_slope_max)
         self.slidder_slope_max.pack(fill=tk.X)
 
-class TopLevelParcour():
-    def __init__(self, mainwindow, dico_rues, rues_adjacentes, itineraire, etape):
-        self.mainwindow = mainwindow
-        self.dico_rues = dico_rues
-        self.rues_adjacentes = rues_adjacentes
-        self.itineraire = itineraire
-        self.etape = etape
-        print(f'etape : {self.etape}')
-        
-        # self.liste_dist_min=[]
-        self.liste_echelles = [0.3, 1, 3, 10, 30, 100, 300, 1000, 3000, 10000]
-        
-        self.toplevel_parcour = tk.Toplevel(self.mainwindow)
+    ############################ Fenetre trajet ##########################
+
+    def init_widget_parcour(self):
         self.toplevel_parcour.resizable(height = False, width = False) 
         self.toplevel_parcour.title = "Trajet"
-        
         self.f_par_width = 400
         self.f_par_height = 500
         self.toplevel_parcour.geometry(f"{self.f_par_width}x{self.f_par_height}")
-
-        self.init_widget()
-        self.show_iti(self.itineraire[self.etape],self.itineraire[self.etape+1])
-
-        self.toplevel_parcour.mainloop()
-
-
-    def init_widget(self):
         
         self.width_canvas = 400
         self.height_canvas = 400
@@ -1219,7 +1193,7 @@ class TopLevelParcour():
     def show_iti(self, fuv_tr_pre, fuv_tr_suiv):
         #Recherche des segments adjacents, compilation de leurs co GPS dans un dictionnaire
         #puis passage en co cartesienne
-        dico_fuv_tr_adj, lat_noeud = compute_cross(fuv_tr_pre, fuv_tr_suiv, self.dico_rues, self.rues_adjacentes)
+        dico_fuv_tr_adj, lat_noeud = compute_cross(fuv_tr_pre, fuv_tr_suiv, self.dico_rues, self.carrefour_adjacences)
         #calcul des points qui seront visible et qu'il faut donc prendre en compte pour l'orientation 
         dist_min = calcul_dist_min(dico_fuv_tr_adj)
         i = 1
@@ -1258,7 +1232,7 @@ class TopLevelParcour():
         #Dessin sur le canvas et affichage des informations
         self.dessine_noeud(dico_fuv_tr_carte, fuv_tr_pre, fuv_tr_suiv, co_nord, cote_echelle, echelle_choisie)
         text_instruction = instructions(dico_fuv_tr_carte, fuv_tr_pre, fuv_tr_suiv, self.dico_rues)
-        self.label_instruction.configure(text = str(self.etape) + " : " + text_instruction)
+        self.label_instruction.configure(text = str(self.etape + 1) + " : " + text_instruction)
         
     def dessine_noeud(self, dico_fuv_tr_carte, fuv_tr_pre, fuv_tr_suiv, co_nord, cote_echelle, echelle_choisie):
         #on trace les eventuels chemins adjacents
@@ -1290,12 +1264,7 @@ class TopLevelParcour():
                 rect_blanc = self.main_canvas.create_rectangle(390-((2*i+2)*cote_echelle/5),380,390-((2*i+1)*cote_echelle/5),390, fill = "white")
                 self.liste_rect_echelle.append(rect_blanc)        
         self.text_echelle = self.main_canvas.create_text((2*390 - cote_echelle)/2,370,text = str(echelle_choisie)+" m", fill = "white", font ="Calibri 12")
-
-
         
-
-        
-
 if __name__ == "__main__":
     root = MainWindow()
     #on lance le chargement de donnees juste apres que l'affichage de la premiere fenetre se soit fait
