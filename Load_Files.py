@@ -124,27 +124,116 @@ def correction_dico_noeuds(dico_noeuds):
         dico_noeuds.pop(tuple_gps)
     return dico_noeuds
     
-def charger_donnees_adj(dico_noeuds):
-    rues_adj_gps = {}
+def charger_donnees_adj_poussette(dico_noeuds,dico_rues):
+    pente_max = 5
+    largeur_min_trot = 1.5
+    rues_adj_poussette = {}
     for noeud in dico_noeuds:
         liste_adj = []
         for rue in dico_noeuds[noeud]:
             for troncon in dico_noeuds[noeud][rue]:
                 liste_adj.append((rue,troncon))
         for (rue,troncon) in liste_adj:
-            if (rue,troncon) not in rues_adj_gps.keys() :
+            if (dico_rues[rue][troncon].get("Pente_max",None) != None) and (dico_rues[rue][troncon].get("Largeur_trottoir_D",None) != None) and (dico_rues[rue][troncon].get("Largeur_trottoir_G",None) != None):
+                if (dico_rues[rue][troncon]["Pente_max"] <= pente_max ) and (dico_rues[rue][troncon]["Largeur_trottoir_D"] >= largeur_min_trot) and (dico_rues[rue][troncon]["Largeur_trottoir_G"] >= largeur_min_trot):
+                    if (rue,troncon) not in rues_adj_poussette.keys() :
+                        if len(liste_adj) == 1 :
+                            rues_adj_poussette[(rue,troncon)] = []
+                        else:
+                            rues_adj_poussette[(rue,troncon)] = []
+                            for i in liste_adj :
+                                if (dico_rues[i[0]][i[1]].get("Pente_max",None) != None) and (dico_rues[i[0]][i[1]].get("Largeur_trottoir_D",None) != None) and (dico_rues[i[0]][i[1]].get("Largeur_trottoir_G",None) != None):
+                                    if (dico_rues[i[0]][i[1]]["Pente_max"] <= pente_max ) and (dico_rues[i[0]][i[1]]["Largeur_trottoir_D"] >= largeur_min_trot) and (dico_rues[i[0]][i[1]]["Largeur_trottoir_G"] >= largeur_min_trot):
+                                        if i != (rue,troncon) and i not in rues_adj_poussette[(rue,troncon)] :
+                                            rues_adj_poussette[(rue,troncon)].append(i)
+                    else:
+                        for i in liste_adj :
+                            if (dico_rues[i[0]][i[1]].get("Pente_max",None) != None) and (dico_rues[i[0]][i[1]].get("Largeur_trottoir_D",None) != None) and (dico_rues[i[0]][i[1]].get("Largeur_trottoir_G",None) != None):
+                                if (dico_rues[i[0]][i[1]]["Pente_max"] <= pente_max ) and (dico_rues[i[0]][i[1]]["Largeur_trottoir_D"] >= largeur_min_trot) and (dico_rues[i[0]][i[1]]["Largeur_trottoir_G"] >= largeur_min_trot):
+                                    if i != (rue,troncon) and i not in rues_adj_poussette[(rue,troncon)] :
+                                        rues_adj_poussette[(rue,troncon)].append(i)
+    return rues_adj_poussette  
+
+def charger_donnees_adj_velo(dico_noeuds,dico_rues):
+    #mettre l'importance des routes
+    rues_adj_velo = {}
+    for noeud in dico_noeuds:
+        liste_adj = []
+        for rue in dico_noeuds[noeud]:
+            for troncon in dico_noeuds[noeud][rue]:
+                liste_adj.append((rue,troncon))
+        for (rue,troncon) in liste_adj:
+            if (rue,troncon) not in rues_adj_velo.keys() :
                 if len(liste_adj) == 1 :
-                    rues_adj_gps[(rue,troncon)] = []
+                    rues_adj_velo[(rue,troncon)] = []
                 else:
-                    rues_adj_gps[(rue,troncon)] = []
+                    rues_adj_velo[(rue,troncon)] = []
                     for i in liste_adj :
-                        if i != (rue,troncon) and i not in rues_adj_gps[(rue,troncon)] :
-                            rues_adj_gps[(rue,troncon)].append(i)
+                        if i != (rue,troncon) and i not in rues_adj_velo[(rue,troncon)] :
+                            rues_adj_velo[(rue,troncon)].append(i)
             else:
                 for i in liste_adj :
-                    if i != (rue,troncon) and i not in rues_adj_gps[(rue,troncon)]:
-                        rues_adj_gps[(rue,troncon)].append(i)
-    return rues_adj_gps  
+                    if i != (rue,troncon) and i not in rues_adj_velo[(rue,troncon)] :
+                        rues_adj_velo[(rue,troncon)].append(i)
+    return rues_adj_velo 
+
+def charger_donnees_adj_voiture(dico_noeuds,dico_rues):
+    largeur_min_chaussee = 2.5
+    rues_adj_voiture = {}
+    for noeud in dico_noeuds:
+        liste_adj = []
+        for rue in dico_noeuds[noeud]:
+            for troncon in dico_noeuds[noeud][rue]:
+                liste_adj.append((rue,troncon))
+        for (rue,troncon) in liste_adj:
+            if (dico_rues[rue][troncon].get("Largeur",None) != None):
+                if (dico_rues[rue][troncon]["Largeur"] >= largeur_min_chaussee):
+                    if (rue,troncon) not in rues_adj_voiture.keys() :
+                        if len(liste_adj) == 1 :
+                            rues_adj_voiture[(rue,troncon)] = []
+                        else:
+                            rues_adj_voiture[(rue,troncon)] = []
+                            for i in liste_adj :
+                                if (dico_rues[i[0]][i[1]].get("Largeur",None) != None):
+                                    if (dico_rues[i[0]][i[1]]["Largeur"] >= largeur_min_chaussee):
+                                        if i != (rue,troncon) and i not in rues_adj_voiture[(rue,troncon)] :
+                                            rues_adj_voiture[(rue,troncon)].append(i)
+                    else:
+                        for i in liste_adj :
+                            if (dico_rues[i[0]][i[1]].get("Largeur",None) != None):
+                                if(dico_rues[i[0]][i[1]]["Largeur"] >= largeur_min_chaussee):
+                                    if i != (rue,troncon) and i not in rues_adj_voiture[(rue,troncon)] :
+                                        rues_adj_voiture[(rue,troncon)].append(i)
+    return rues_adj_voiture 
+
+def charger_donnees_adj_pied(dico_noeuds,dico_rues):
+    largeur_min_trot = 0.5
+    rues_adj_pied = {}
+    for noeud in dico_noeuds:
+        liste_adj = []
+        for rue in dico_noeuds[noeud]:
+            for troncon in dico_noeuds[noeud][rue]:
+                liste_adj.append((rue,troncon))
+        for (rue,troncon) in liste_adj:
+            if (dico_rues[rue][troncon].get("Largeur_trottoir_D",None) != None) and (dico_rues[rue][troncon].get("Largeur_trottoir_G",None) != None):
+                if(dico_rues[rue][troncon]["Largeur_trottoir_D"] >= largeur_min_trot) and (dico_rues[rue][troncon]["Largeur_trottoir_G"] >= largeur_min_trot):
+                    if (rue,troncon) not in rues_adj_pied.keys() :
+                        if len(liste_adj) == 1 :
+                            rues_adj_pied[(rue,troncon)] = []
+                        else:
+                            rues_adj_pied[(rue,troncon)] = []
+                            for i in liste_adj :
+                                if(dico_rues[i[0]][i[1]].get("Largeur_trottoir_G",None) != None):
+                                    if(dico_rues[i[0]][i[1]]["Largeur_trottoir_G"] >= largeur_min_trot):
+                                        if i != (rue,troncon) and i not in rues_adj_pied[(rue,troncon)] :
+                                            rues_adj_pied[(rue,troncon)].append(i)
+                    else:
+                        for i in liste_adj :
+                            if(dico_rues[i[0]][i[1]].get("Largeur_trottoir_G",None) != None):
+                                if(dico_rues[i[0]][i[1]]["Largeur_trottoir_G"] >= largeur_min_trot):
+                                    if i != (rue,troncon) and i not in rues_adj_pied[(rue,troncon)] :
+                                        rues_adj_pied[(rue,troncon)].append(i)
+    return rues_adj_pied  
              
 def charger_donnees_adresses():
     f_point_debouche = "point_debouche.geojson"
