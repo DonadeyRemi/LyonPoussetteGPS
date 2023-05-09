@@ -20,8 +20,8 @@ class MainWindow():
         # la fonction load_all_datas est lancée au bout de 100ms après le démarage (cf. ligne 679 (plus à jour))
         self.fen_trajet = []
         self.itineraire = []
-        self.depart = (None,None)
-        self.arrivee = (None,None)
+        self.depart = [None,None]
+        self.arrivee = [None,None]
         self.dist_trajet = 0
         self.saisie_user_start = ""
         self.saisie_user_end = ""
@@ -29,6 +29,7 @@ class MainWindow():
         self.toplevel_parcour = None
         self.etape = 0
         self.liste_echelles = [0.3, 1, 3, 10, 30, 100, 300, 1000, 3000, 10000]
+        self.maker_noeud = None
         ########################## Fenetre parametres #########################
         self.toplevel_params = None
 
@@ -48,7 +49,7 @@ class MainWindow():
         self.loading_label_1.destroy()
         self.loading_label_2.destroy()
         self.progress_bar.destroy()
-        self.root.geometry("1000x600")
+        self.root.geometry("1200x600")
         
         self.map_widget = tkintermapview.TkinterMapView(self.root, width=800, height=600, corner_radius=0)
         self.map_widget.pack(side=tk.LEFT,fill=tk.BOTH)
@@ -166,7 +167,7 @@ class MainWindow():
             self.liste_depart = Load_Files.give_troncon_address(numero, rue, commune, com_possibles, latitude, longitude, self.dico_adresses_num, self.dico_adresses_rues, self.dico_adresses_communes)
             self.start_selection.configure(values = self.liste_depart)
         self.start_selection.configure(foreground = "red")
-        self.depart = (None,None)
+        self.depart = [None,None]
         if len(self.liste_depart) == 1 and len(event.widget.get()) > 1:
             self.start_selection.event_generate('<Down>',when="tail")
     
@@ -211,7 +212,7 @@ class MainWindow():
                     if i < len(choix)-1:
                             rue += " "
                 co_gps = self.dico_adresses_num[numero][rue][commune]
-        self.depart = Load_Files.give_troncon_nearest_gps(co_gps, self.dico_rues)
+        self.depart = co_gps
         
         print()
         print(f"FUV+TRONCON départ : {self.depart}")
@@ -235,7 +236,7 @@ class MainWindow():
             self.liste_arrivee = Load_Files.give_troncon_address(numero, rue, commune, com_possibles, latitude, longitude, self.dico_adresses_num, self.dico_adresses_rues, self.dico_adresses_communes)
             self.end_selection.configure(values = self.liste_arrivee)
         self.end_selection.configure(foreground = "red")
-        self.arrivee = (None,None)
+        self.arrivee = [None,None]
         if len(self.liste_arrivee) == 1 and len(event.widget.get()) > 1:
             self.end_selection.event_generate('<Down>',when="tail")
     
@@ -281,7 +282,7 @@ class MainWindow():
                     if i < len(choix)-1:
                             rue += " "
                 co_gps = self.dico_adresses_num[numero][rue][commune]
-        self.arrivee = Load_Files.give_troncon_nearest_gps(co_gps, self.dico_rues)
+        self.arrivee = co_gps
         
         print()
         print(f"FUV+TRONCON arrivée : {self.arrivee}")
@@ -304,122 +305,117 @@ class MainWindow():
         Args:
             event (dict): the tk event object return after the user event
         """
-        if self.choice_transport.get() == 0 :
-            #il a choisi la poussette fauteil
-            if self.depart != (None,None) and self.arrivee != (None,None) and self.depart != self.arrivee:
-                if (self.toplevel_params != None) :
-                    self.toplevel_params.destroy()
-                self.itineraire, self.dist_trajet = Load_Files.a_star(self.depart,self.arrivee,self.carrefour_adjacences_poussette, self.dico_rues)
-                print(self.dico_rues[self.itineraire[0][0]][self.itineraire[0][1]]['GPS'])
-                #on cache la frame principale et affiche la frame itineraire
-                self.frame_princ.pack_forget()
-                self.var_prop_trajet.set(f"Votre Trajet\n {self.var_entry_start.get()} vers {self.var_entry_end.get()}")
-                self.frame_trajet.pack(fill=tk.Y)
-                self.frame_detail_etapes.pack(fill=tk.BOTH)
-                # on appelle la fonction qui affiche la carte principale
-                self.show_large_map()
-                self.l_button_etape = []
-                for i in range(len(self.itineraire)-1):
-                    text_detail_etapes = str(i+1) + " : " + Load_Files.consigne_noeud(self.itineraire[i], self.itineraire[i+1], self.dico_rues, self.carrefour_adjacences_poussette)
-                    button_etape = tk.Button(self.inner_frame_etapes,text=text_detail_etapes,bg='gray',fg='black', command = lambda idx=i: self.open_window_trajet_middle(idx))
-                    button_etape.pack(side = tk.TOP, fill = tk.X)
-                    self.l_button_etape.append(button_etape)
-                    #self.button_etape.bind("<Button-1>",self.open_window_trajet)
-            else :
-                messagebox.showinfo("Itinéraire incomplet", "Adresse(s) de départ et/ou d'arrivée non renseignée(s) ou non reconnue(s). \nVeuillez compléter les champs manquants.")
-
-        elif self.choice_transport.get() == 1 :
+        if self.choice_transport.get() == 1 :
             #il a choisi la poussette velo
-            if self.depart != (None,None) and self.arrivee != (None,None) and self.depart != self.arrivee:
+            self.depart_fuv = Load_Files.give_troncon_nearest_gps(self.depart,self.dico_rues,self.choice_transport.get())
+            self.arrivee_fuv = Load_Files.give_troncon_nearest_gps(self.arrivee,self.dico_rues,self.choice_transport.get())
+            if self.depart_fuv != (None,None) and self.arrivee_fuv != (None,None) and self.depart_fuv != self.arrivee_fuv:
                 if (self.toplevel_params != None) :
                     self.toplevel_params.destroy()
-                self.itineraire, self.dist_trajet = Load_Files.a_star(self.depart,self.arrivee,self.carrefour_adjacences_velo, self.dico_rues)
-                print(self.dico_rues[self.itineraire[0][0]][self.itineraire[0][1]]['GPS'])
-                #on cache la frame principale et affiche la frame itineraire
-                self.frame_princ.pack_forget()
-                self.var_prop_trajet.set(f"Votre Trajet\n {self.var_entry_start.get()} vers {self.var_entry_end.get()}")
-                self.frame_trajet.pack(fill=tk.Y)
-                self.frame_detail_etapes.pack(fill=tk.BOTH)
-                # on appelle la fonction qui affiche la carte principale
-                self.show_large_map()
-                self.l_button_etape = []
-                for i in range(len(self.itineraire)-1):
-                    text_detail_etapes = str(i+1) + " : " + Load_Files.consigne_noeud(self.itineraire[i], self.itineraire[i+1], self.dico_rues, self.carrefour_adjacences_velo)
-                    button_etape = tk.Button(self.inner_frame_etapes,text=text_detail_etapes,bg='gray',fg='black', command = lambda idx=i: self.open_window_trajet_middle(idx))
-                    button_etape.pack(side = tk.TOP, fill = tk.X)
-                    self.l_button_etape.append(button_etape)
-                    #self.button_etape.bind("<Button-1>",self.open_window_trajet)
+                self.itineraire, self.dist_trajet = Load_Files.a_star(self.depart_fuv,self.arrivee_fuv,self.carrefour_adjacences_velo, self.dico_rues)
+                if len(self.itineraire) > 1 :
+                    print(self.dico_rues[self.itineraire[0][0]][self.itineraire[0][1]]['GPS'])
+                    #on cache la frame principale et affiche la frame itineraire
+                    self.frame_princ.pack_forget()
+                    self.var_prop_trajet.set(f"Votre Trajet\n {self.var_entry_start.get()} vers {self.var_entry_end.get()}")
+                    self.frame_trajet.pack(fill=tk.Y)
+                    self.frame_detail_etapes.pack(fill=tk.BOTH)
+                    # on appelle la fonction qui affiche la carte principale
+                    self.show_large_map()
+                    self.l_button_etape = []
+                    for i in range(len(self.itineraire)-1):
+                        text_detail_etapes = str(i+1) + " : " + Load_Files.consigne_noeud(self.itineraire[i], self.itineraire[i+1], self.dico_rues, self.carrefour_adjacences_velo)
+                        button_etape = tk.Button(self.inner_frame_etapes,text=text_detail_etapes,bg='gray',fg='black', command = lambda idx=i: self.open_window_trajet_middle(idx))
+                        button_etape.pack(side = tk.TOP, fill = tk.X)
+                        self.l_button_etape.append(button_etape)
+
+                else :
+                    messagebox.showinfo("Itinéraire Non trouvé", "Aucun itinéraires n'existent avec les paramètres selectionnés.")
             else :
                 messagebox.showinfo("Itinéraire incomplet", "Adresse(s) de départ et/ou d'arrivée non renseignée(s) ou non reconnue(s). \nVeuillez compléter les champs manquants.")
 
         elif self.choice_transport.get() == 2 :
             #il a choisi la poussette la voiture
-            if self.depart != (None,None) and self.arrivee != (None,None) and self.depart != self.arrivee:
+            self.depart_fuv = Load_Files.give_troncon_nearest_gps(self.depart,self.dico_rues,self.choice_transport.get())
+            self.arrivee_fuv = Load_Files.give_troncon_nearest_gps(self.arrivee,self.dico_rues,self.choice_transport.get())
+            if self.depart_fuv != (None,None) and self.arrivee_fuv != (None,None) and self.depart_fuv != self.arrivee_fuv:
                 if (self.toplevel_params != None) :
                     self.toplevel_params.destroy()
-                self.itineraire, self.dist_trajet = Load_Files.a_star(self.depart,self.arrivee,self.carrefour_adjacences_voiture, self.dico_rues)
-                print(self.dico_rues[self.itineraire[0][0]][self.itineraire[0][1]]['GPS'])
-                #on cache la frame principale et affiche la frame itineraire
-                self.frame_princ.pack_forget()
-                self.var_prop_trajet.set(f"Votre Trajet\n {self.var_entry_start.get()} vers {self.var_entry_end.get()}")
-                self.frame_trajet.pack(fill=tk.Y)
-                self.frame_detail_etapes.pack(fill=tk.BOTH)
-                # on appelle la fonction qui affiche la carte principale
-                self.show_large_map()
-                self.l_button_etape = []
-                for i in range(len(self.itineraire)-1):
-                    text_detail_etapes = str(i+1) + " : " + Load_Files.consigne_noeud(self.itineraire[i], self.itineraire[i+1], self.dico_rues, self.carrefour_adjacences_voiture)
-                    button_etape = tk.Button(self.inner_frame_etapes,text=text_detail_etapes,bg='gray',fg='black', command = lambda idx=i: self.open_window_trajet_middle(idx))
-                    button_etape.pack(side = tk.TOP, fill = tk.X)
-                    self.l_button_etape.append(button_etape)
-                    #self.button_etape.bind("<Button-1>",self.open_window_trajet)
+                self.itineraire, self.dist_trajet = Load_Files.a_star(self.depart_fuv,self.arrivee_fuv,self.carrefour_adjacences_voiture, self.dico_rues)
+                if len(self.itineraire) > 1 :
+                    print(self.dico_rues[self.itineraire[0][0]][self.itineraire[0][1]]['GPS'])
+                    #on cache la frame principale et affiche la frame itineraire
+                    self.frame_princ.pack_forget()
+                    self.var_prop_trajet.set(f"Votre Trajet\n {self.var_entry_start.get()} vers {self.var_entry_end.get()}")
+                    self.frame_trajet.pack(fill=tk.Y)
+                    self.frame_detail_etapes.pack(fill=tk.BOTH)
+                    # on appelle la fonction qui affiche la carte principale
+                    self.show_large_map()
+                    self.l_button_etape = []
+                    for i in range(len(self.itineraire)-1):
+                        text_detail_etapes = str(i+1) + " : " + Load_Files.consigne_noeud(self.itineraire[i], self.itineraire[i+1], self.dico_rues, self.carrefour_adjacences_voiture)
+                        button_etape = tk.Button(self.inner_frame_etapes,text=text_detail_etapes,bg='gray',fg='black', command = lambda idx=i: self.open_window_trajet_middle(idx))
+                        button_etape.pack(side = tk.TOP, fill = tk.X)
+                        self.l_button_etape.append(button_etape)
+
+                else :
+                    messagebox.showinfo("Itinéraire Non trouvé", "Aucun itinéraires n'existent avec les paramètres selectionnés.")
             else :
                 messagebox.showinfo("Itinéraire incomplet", "Adresse(s) de départ et/ou d'arrivée non renseignée(s) ou non reconnue(s). \nVeuillez compléter les champs manquants.")
 
         elif self.choice_transport.get() == 3 :
             #il a choisi la poussette le pied
-            if self.depart != (None,None) and self.arrivee != (None,None) and self.depart != self.arrivee:
+            self.depart_fuv = Load_Files.give_troncon_nearest_gps(self.depart,self.dico_rues,self.choice_transport.get())
+            self.arrivee_fuv = Load_Files.give_troncon_nearest_gps(self.arrivee,self.dico_rues,self.choice_transport.get())
+            if self.depart_fuv != (None,None) and self.arrivee_fuv != (None,None) and self.depart_fuv != self.arrivee_fuv:
                 if (self.toplevel_params != None) :
                     self.toplevel_params.destroy()
-                self.itineraire, self.dist_trajet = Load_Files.a_star(self.depart,self.arrivee,self.carrefour_adjacences_pied, self.dico_rues)
-                print(self.dico_rues[self.itineraire[0][0]][self.itineraire[0][1]]['GPS'])
-                #on cache la frame principale et affiche la frame itineraire
-                self.frame_princ.pack_forget()
-                self.var_prop_trajet.set(f"Votre Trajet\n {self.var_entry_start.get()} vers {self.var_entry_end.get()}")
-                self.frame_trajet.pack(fill=tk.Y)
-                self.frame_detail_etapes.pack(fill=tk.BOTH)
-                # on appelle la fonction qui affiche la carte principale
-                self.show_large_map()
-                self.l_button_etape = []
-                for i in range(len(self.itineraire)-1):
-                    text_detail_etapes = str(i+1) + " : " + Load_Files.consigne_noeud(self.itineraire[i], self.itineraire[i+1], self.dico_rues, self.carrefour_adjacences_pied)
-                    button_etape = tk.Button(self.inner_frame_etapes,text=text_detail_etapes,bg='gray',fg='black', command = lambda idx=i: self.open_window_trajet_middle(idx))
-                    button_etape.pack(side = tk.TOP, fill = tk.X)
-                    self.l_button_etape.append(button_etape)
-                    #self.button_etape.bind("<Button-1>",self.open_window_trajet)
+                self.itineraire, self.dist_trajet = Load_Files.a_star(self.depart_fuv,self.arrivee_fuv,self.carrefour_adjacences_pied, self.dico_rues)
+                if len(self.itineraire) > 1 :
+                    print(self.dico_rues[self.itineraire[0][0]][self.itineraire[0][1]]['GPS'])
+                    #on cache la frame principale et affiche la frame itineraire
+                    self.frame_princ.pack_forget()
+                    self.var_prop_trajet.set(f"Votre Trajet\n {self.var_entry_start.get()} vers {self.var_entry_end.get()}")
+                    self.frame_trajet.pack(fill=tk.Y)
+                    self.frame_detail_etapes.pack(fill=tk.BOTH)
+                    # on appelle la fonction qui affiche la carte principale
+                    self.show_large_map()
+                    self.l_button_etape = []
+                    for i in range(len(self.itineraire)-1):
+                        text_detail_etapes = str(i+1) + " : " + Load_Files.consigne_noeud(self.itineraire[i], self.itineraire[i+1], self.dico_rues, self.carrefour_adjacences_pied)
+                        button_etape = tk.Button(self.inner_frame_etapes,text=text_detail_etapes,bg='gray',fg='black', command = lambda idx=i: self.open_window_trajet_middle(idx))
+                        button_etape.pack(side = tk.TOP, fill = tk.X)
+                        self.l_button_etape.append(button_etape)
+                else :
+                    messagebox.showinfo("Itinéraire Non trouvé", "Aucun itinéraires n'existent avec les paramètres selectionnés.")
             else :
                 messagebox.showinfo("Itinéraire incomplet", "Adresse(s) de départ et/ou d'arrivée non renseignée(s) ou non reconnue(s). \nVeuillez compléter les champs manquants.")
 
         else :
-            if self.depart != (None,None) and self.arrivee != (None,None) and self.depart != self.arrivee:
+            self.depart_fuv = Load_Files.give_troncon_nearest_gps(self.depart,self.dico_rues,self.choice_transport.get())
+            self.arrivee_fuv = Load_Files.give_troncon_nearest_gps(self.arrivee,self.dico_rues,self.choice_transport.get())
+            if self.depart_fuv != (None,None) and self.arrivee_fuv != (None,None) and self.depart_fuv != self.arrivee_fuv:
                 if (self.toplevel_params != None) :
                     self.toplevel_params.destroy()
-                self.itineraire, self.dist_trajet = Load_Files.a_star(self.depart,self.arrivee,self.carrefour_adjacences_poussette, self.dico_rues)
-                print(self.dico_rues[self.itineraire[0][0]][self.itineraire[0][1]]['GPS'])
-                #on cache la frame principale et affiche la frame itineraire
-                self.frame_princ.pack_forget()
-                self.var_prop_trajet.set(f"Votre Trajet\n {self.var_entry_start.get()} vers {self.var_entry_end.get()}")
-                self.frame_trajet.pack(fill=tk.Y)
-                self.frame_detail_etapes.pack(fill=tk.BOTH)
-                # on appelle la fonction qui affiche la carte principale
-                self.show_large_map()
-                self.l_button_etape = []
-                for i in range(len(self.itineraire)-1):
-                    text_detail_etapes = str(i+1) + " : " + Load_Files.consigne_noeud(self.itineraire[i], self.itineraire[i+1], self.dico_rues, self.carrefour_adjacences_poussette)
-                    button_etape = tk.Button(self.inner_frame_etapes,text=text_detail_etapes,bg='gray',fg='black', command = lambda idx=i: self.open_window_trajet_middle(idx))
-                    button_etape.pack(side = tk.TOP, fill = tk.X)
-                    self.l_button_etape.append(button_etape)
-                    #self.button_etape.bind("<Button-1>",self.open_window_trajet)
+                self.itineraire, self.dist_trajet = Load_Files.a_star(self.depart_fuv,self.arrivee_fuv,self.carrefour_adjacences_poussette, self.dico_rues)
+                if len(self.itineraire) > 1 :
+                    print(self.dico_rues[self.itineraire[0][0]][self.itineraire[0][1]]['GPS'])
+                    #on cache la frame principale et affiche la frame itineraire
+                    self.frame_princ.pack_forget()
+                    self.var_prop_trajet.set(f"Votre Trajet\n {self.var_entry_start.get()} vers {self.var_entry_end.get()}")
+                    self.frame_trajet.pack(fill=tk.Y)
+                    self.frame_detail_etapes.pack(fill=tk.BOTH)
+                    # on appelle la fonction qui affiche la carte principale
+                    self.show_large_map()
+                    self.l_button_etape = []
+                    for i in range(len(self.itineraire)-1):
+                        text_detail_etapes = str(i+1) + " : " + Load_Files.consigne_noeud(self.itineraire[i], self.itineraire[i+1], self.dico_rues, self.carrefour_adjacences_poussette)
+                        button_etape = tk.Button(self.inner_frame_etapes,text=text_detail_etapes,bg='gray',fg='black', command = lambda idx=i: self.open_window_trajet_middle(idx))
+                        button_etape.pack(side = tk.TOP, fill = tk.X)
+                        self.l_button_etape.append(button_etape)
+
+                else :
+                    messagebox.showinfo("Itinéraire Non trouvé", "Aucun itinéraires n'existent avec les paramètres selectionnés.")
             else :
                 messagebox.showinfo("Itinéraire incomplet", "Adresse(s) de départ et/ou d'arrivée non renseignée(s) ou non reconnue(s). \nVeuillez compléter les champs manquants.")
     
@@ -466,12 +462,12 @@ class MainWindow():
             self.frame_princ.pack(fill=tk.Y)
 
             # on change l'affichage sur la grande carte
-            """
+            
             self.map_widget.delete_all_path()
             self.map_widget.delete_all_marker()
             self.map_widget.set_position(45.76177569754233, 4.8358160526802685)  #on centre sur Lyon
             self.map_widget.set_zoom(11)
-            """
+            
         
     def open_window_trajet(self,event):
         """Fonction callback du bouton commencer le trajet, ouvre la fenetre du trajet carrefour par carrefour
@@ -601,16 +597,16 @@ class MainWindow():
     def show_iti(self, fuv_tr_pre, fuv_tr_suiv):
         #Recherche des segments adjacents, compilation de leurs co GPS dans un dictionnaire
         #puis passage en co cartesienne
-        if self.choice_transport.get() == 0 :
-            dico_fuv_tr_adj, lat_noeud = Load_Files.compute_cross(fuv_tr_pre, fuv_tr_suiv, self.dico_rues, self.carrefour_adjacences_poussette)
-        elif self.choice_transport.get() == 1 :
-            dico_fuv_tr_adj, lat_noeud = Load_Files.compute_cross(fuv_tr_pre, fuv_tr_suiv, self.dico_rues, self.carrefour_adjacences_velo)
+        if self.maker_noeud != None : 
+            self.maker_noeud.delete()
+        if self.choice_transport.get() == 1 :
+            dico_fuv_tr_adj, lat_noeud,long_noeud = Load_Files.compute_cross(fuv_tr_pre, fuv_tr_suiv, self.dico_rues, self.carrefour_adjacences_velo)
         elif self.choice_transport.get() == 2 :
-            dico_fuv_tr_adj, lat_noeud = Load_Files.compute_cross(fuv_tr_pre, fuv_tr_suiv, self.dico_rues, self.carrefour_adjacences_voiture)
+            dico_fuv_tr_adj, lat_noeud,long_noeud = Load_Files.compute_cross(fuv_tr_pre, fuv_tr_suiv, self.dico_rues, self.carrefour_adjacences_voiture)
         elif self.choice_transport.get() == 3 :
-            dico_fuv_tr_adj, lat_noeud = Load_Files.compute_cross(fuv_tr_pre, fuv_tr_suiv, self.dico_rues, self.carrefour_adjacences_pied)
+            dico_fuv_tr_adj, lat_noeud,long_noeud = Load_Files.compute_cross(fuv_tr_pre, fuv_tr_suiv, self.dico_rues, self.carrefour_adjacences_pied)
         else :
-            dico_fuv_tr_adj, lat_noeud = Load_Files.compute_cross(fuv_tr_pre, fuv_tr_suiv, self.dico_rues, self.carrefour_adjacences_velo) # valeur par defaut
+            dico_fuv_tr_adj, lat_noeud,long_noeud = Load_Files.compute_cross(fuv_tr_pre, fuv_tr_suiv, self.dico_rues, self.carrefour_adjacences_velo) # valeur par defaut
         #calcul des points qui seront visible et qu'il faut donc prendreen compte pour l'orientation 
         dist_min = Load_Files.calcul_dist_min(dico_fuv_tr_adj)
         i = 1
@@ -648,6 +644,11 @@ class MainWindow():
         self.dessine_noeud(dico_fuv_tr_carte, fuv_tr_pre, fuv_tr_suiv, co_nord, cote_echelle, echelle_choisie)
         text_instruction = Load_Files.instructions(dico_fuv_tr_carte, fuv_tr_pre, fuv_tr_suiv, self.dico_rues)
         self.label_instruction.configure(text = str(self.etape + 1) + " : " + text_instruction)
+
+        # mettre la position du carrefour actuel
+        self.maker_noeud = self.map_widget.set_marker(lat_noeud,long_noeud,"Actuel")
+        self.map_widget.set_position(lat_noeud,long_noeud)
+        self.map_widget.set_zoom(17)
         
     def dessine_noeud(self, dico_fuv_tr_carte, fuv_tr_pre, fuv_tr_suiv, co_nord, cote_echelle, echelle_choisie):
         #on trace les eventuels chemins adjacents
