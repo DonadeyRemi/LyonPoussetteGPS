@@ -10,6 +10,7 @@ Created on Tue Apr 11 16:29:13 2023
 
 import tkinter as tk
 import math
+import time
 from tkinter import ttk
 from tkinter.ttk import Separator
 from tkinter import messagebox
@@ -51,14 +52,15 @@ def charger_donnees_troncon():
         dico_rues[rue][troncon]["Sens_circulation"] = segment["properties"]["senscirculation"]
         dico_rues[rue][troncon]["Nom"] = segment["properties"]["nom"]
         dico_rues[rue][troncon]["Commune"] = segment["properties"]["nomcommune"]
-        dico_rues[rue][troncon]["Code_postal"] = segment["properties"]["codeinsee"]
         dico_rues[rue][troncon]["Denomination_route"] = segment["properties"]["denomroutiere"]
+        dico_rues[rue][troncon]["Limitation_vitesse"] = "50"
         longueur_seg = 0
         
         for i in range(len(co_gps_rue)-1):
             longueur_seg += dist_lat_lon_deg(co_gps_rue[i][1],co_gps_rue[i][0],co_gps_rue[i+1][1],co_gps_rue[i+1][0])
         dico_rues[rue][troncon]["Longueur"] = longueur_seg
         
+        co_gps_rue = [co_gps_rue[0],co_gps_rue[-1]]
         for co_gps in co_gps_rue:
             tuple_gps = (co_gps[0],co_gps[1])
             if tuple_gps not in dico_noeuds.keys():
@@ -69,10 +71,10 @@ def charger_donnees_troncon():
                 dico_noeuds[tuple_gps][rue].append(troncon)
     return dico_noeuds, dico_rues
 
-def charger_donnees_chausses(dico_noeuds, dico_rues):     
-    f_chausses_geojson = r"C:\Users\timhu\Documents\1_Scolaire\INSA_2A\Informatique\Projet\Donnees_projet\Chaussees_et_trottoirs.geojson"
+def charger_donnees_chaussees(dico_noeuds, dico_rues):     
+    f_chaussees_geojson = r"C:\Users\timhu\Documents\1_Scolaire\INSA_2A\Informatique\Projet\Donnees_projet\Chaussees_et_trottoirs.geojson"
     arrondi_gps = 12
-    with open(f_chausses_geojson,encoding='utf-8') as fichier :
+    with open(f_chaussees_geojson,encoding='utf-8') as fichier :
         data = json.load(fichier)
     for segment in data["features"]:
         proprietes = segment["properties"]
@@ -88,29 +90,26 @@ def charger_donnees_chausses(dico_noeuds, dico_rues):
                 dico_rues[rue][troncon]["Nom"] = proprietes["nomvoie1"]
             if dico_rues[rue][troncon]["Commune"] == "":
                 dico_rues[rue][troncon]["Commune"] = proprietes["commune1"]
-            if dico_rues[rue][troncon]["Code_postal"] == "":
-                dico_rues[rue][troncon]["Code_postal"] = proprietes["insee1"]
             if dico_rues[rue][troncon]["Denomination_route"] == "" :
                 dico_rues[rue][troncon]["Denomination_route"] = proprietes["denominationroutiere"]
-            
+            if dico_rues[rue][troncon]["Sens_circulation"] == "" :
+                dico_rues[rue][troncon]["Sens_circulation"] = "Double"
         else:    
             if rue not in dico_rues.keys():
                 dico_rues[rue] = {troncon: {"GPS" : co_gps_rue} }
             else:
                 dico_rues[rue][troncon] = {"GPS" : co_gps_rue}
-            if proprietes["senscirculation"] == "Double":
-                dico_rues[rue][troncon]["Sens_circulation"] = proprietes["senscirculation"]
-            else:
-                dico_rues[rue][troncon]["Sens_circulation"] = None
+            dico_rues[rue][troncon]["Sens_circulation"] = "Double"
             dico_rues[rue][troncon]["Nom"] = proprietes["nomvoie1"]
             dico_rues[rue][troncon]["Commune"] = proprietes["commune1"]
-            dico_rues[rue][troncon]["Code_postal"] = proprietes["insee1"]
             dico_rues[rue][troncon]["Denomination_route"] = proprietes["denominationroutiere"]
         
         dico_rues[rue][troncon]["Longueur"] = proprietes.get("longueurreellechaussee",None)
         if dico_rues[rue][troncon]["Longueur"] == None:
             dico_rues[rue][troncon]["Longueur"] = proprietes["longueurcalculee"]
         dico_rues[rue][troncon]["Limitation_vitesse"] = proprietes["limitationvitesse"]
+        if dico_rues[rue][troncon]["Limitation_vitesse"] == "":
+            dico_rues[rue][troncon]["Limitation_vitesse"] = "50"
         dico_rues[rue][troncon]["Largeur"] = proprietes.get("largeurcirculeechaussee",None)
         dico_rues[rue][troncon]["Pente_max"] = proprietes.get("pentemaximale",None)
         dico_rues[rue][troncon]["Pente_moy"] = proprietes.get("pentemoyenne",None)
@@ -120,6 +119,7 @@ def charger_donnees_chausses(dico_noeuds, dico_rues):
         dico_rues[rue][troncon]["Revetement_trottoir_G"] = proprietes["revetementtrottoirgauche"]
         dico_rues[rue][troncon]["Largeur_trottoir_G"] = proprietes.get("largeurtrottoirgauche",None)
         
+        co_gps_rue = [co_gps_rue[0],co_gps_rue[-1]]
         for co_gps in co_gps_rue:
             tuple_gps = (co_gps[0],co_gps[1])
             if tuple_gps not in dico_noeuds.keys():
@@ -140,7 +140,7 @@ def correction_dico_noeuds(dico_noeuds):
     for tuple_gps in a_supprimer:
         dico_noeuds.pop(tuple_gps)
     return dico_noeuds
-    
+
 def charger_donnees_adj(dico_noeuds):
     rues_adj_gps = {}
     for noeud in dico_noeuds:
@@ -162,6 +162,126 @@ def charger_donnees_adj(dico_noeuds):
                     if i != (rue,troncon) and i not in rues_adj_gps[(rue,troncon)]:
                         rues_adj_gps[(rue,troncon)].append(i)
     return rues_adj_gps  
+    
+def charger_donnees_adj_poussette(dico_noeuds,dico_rues):
+    pente_max = 8
+    pente_moy = 5
+    largeur_min_trot = 1.5
+    revettements_eviter = ["Pavés","Végétation","Non revêtu"]
+    importance_eviter = ["Grand axe"]
+    rues_adj_poussette = {}
+    for noeud in dico_noeuds:
+        liste_adj = []
+        for rue in dico_noeuds[noeud]:
+            for troncon in dico_noeuds[noeud][rue]:
+                if ((dico_rues[rue][troncon].get("Pente_max",None) == None or dico_rues[rue][troncon]["Pente_max"] <= pente_max) 
+                and (dico_rues[rue][troncon].get("Pente_moy",None) == None or dico_rues[rue][troncon]["Pente_moy"] <= pente_moy)
+                and (dico_rues[rue][troncon].get("Largeur_trottoir_D",None) == None or dico_rues[rue][troncon].get("Largeur_trottoir_G",None) == None 
+                or dico_rues[rue][troncon]["Largeur_trottoir_D"] >= largeur_min_trot or dico_rues[rue][troncon]["Largeur_trottoir_G"] >= largeur_min_trot) 
+                and (dico_rues[rue][troncon].get("Revetement_trottoir_D",None) == None or dico_rues[rue][troncon].get("Revetement_trottoir_G",None) == None 
+                or dico_rues[rue][troncon]["Revetement_trottoir_D"] not in revettements_eviter or dico_rues[rue][troncon]["Revetement_trottoir_G"] not in revettements_eviter)
+                and (dico_rues[rue][troncon].get("Importance",None) == None or dico_rues[rue][troncon]["Importance"] not in importance_eviter)):
+                        liste_adj.append((rue,troncon))
+        for (rue,troncon) in liste_adj:
+            if (rue,troncon) not in rues_adj_poussette.keys() :
+                if len(liste_adj) == 1 :
+                    rues_adj_poussette[(rue,troncon)] = []
+                else:
+                    rues_adj_poussette[(rue,troncon)] = []
+                    for i in liste_adj :
+                        if i != (rue,troncon) and i not in rues_adj_poussette[(rue,troncon)] :
+                            rues_adj_poussette[(rue,troncon)].append(i)
+            else:
+                for i in liste_adj :
+                    if i != (rue,troncon) and i not in rues_adj_poussette[(rue,troncon)] :
+                        rues_adj_poussette[(rue,troncon)].append(i)
+    return rues_adj_poussette  
+
+def charger_donnees_adj_velo(dico_noeuds,dico_rues):
+    type_eviter = ["Escalier"]
+    revettements_eviter = ["Végétation","Non revêtu"]
+    importance_eviter = ["Grand axe"]
+    rues_adj_velo = {}
+    for noeud in dico_noeuds:
+        liste_adj = []
+        for rue in dico_noeuds[noeud]:
+            for troncon in dico_noeuds[noeud][rue]:
+                if ((dico_rues[rue][troncon].get("Revetement_chaussee",None) == None or dico_rues[rue][troncon]["Revetement_chaussee"] not in revettements_eviter)
+                and (dico_rues[rue][troncon].get("Importance",None) == None or dico_rues[rue][troncon]["Importance"] not in importance_eviter)
+                and (dico_rues[rue][troncon].get("Type_circulation",None) == None or dico_rues[rue][troncon]["Type_circulation"] not in type_eviter)):
+                        liste_adj.append((rue,troncon))
+        for (rue,troncon) in liste_adj:
+            if (rue,troncon) not in rues_adj_velo.keys() :
+                if len(liste_adj) == 1 :
+                    rues_adj_velo[(rue,troncon)] = []
+                else:
+                    rues_adj_velo[(rue,troncon)] = []
+                    for i in liste_adj :
+                        if i != (rue,troncon) and i not in rues_adj_velo[(rue,troncon)] :
+                            rues_adj_velo[(rue,troncon)].append(i)
+            else:
+                for i in liste_adj :
+                    if i != (rue,troncon) and i not in rues_adj_velo[(rue,troncon)]:
+                        rues_adj_velo[(rue,troncon)].append(i)
+    return rues_adj_velo
+
+def charger_donnees_adj_voiture(dico_noeuds,dico_rues):
+    largeur_min_chaussee = 2.5
+    type_eviter = ["Escalier","Bus","Pietons"]
+    revettements_eviter = ["Végétation","Non revêtu"]
+    rues_adj_voiture = {}
+    for noeud in dico_noeuds:
+        liste_adj = []
+        for rue in dico_noeuds[noeud]:
+            for troncon in dico_noeuds[noeud][rue]:
+                if ((dico_rues[rue][troncon].get("Largeur",None) == None or dico_rues[rue][troncon]["Largeur"] >= largeur_min_chaussee)
+                and (dico_rues[rue][troncon].get("Type_circulation",None) == None or dico_rues[rue][troncon]["Type_circulation"] not in type_eviter)
+                and (dico_rues[rue][troncon].get("Revetement_chaussee",None) == None or dico_rues[rue][troncon]["Revetement_chaussee"] not in revettements_eviter)):
+                    liste_adj.append((rue,troncon))
+        for (rue,troncon) in liste_adj:
+            if (rue,troncon) not in rues_adj_voiture.keys() :
+                if len(liste_adj) == 1 :
+                    rues_adj_voiture[(rue,troncon)] = []
+                else:
+                    rues_adj_voiture[(rue,troncon)] = []
+                    for i in liste_adj :
+                        if i != (rue,troncon) and i not in rues_adj_voiture[(rue,troncon)] :
+                            rues_adj_voiture[(rue,troncon)].append(i)
+            else:
+                for i in liste_adj :
+                    if i != (rue,troncon) and i not in rues_adj_voiture[(rue,troncon)] :
+                        rues_adj_voiture[(rue,troncon)].append(i)
+    return rues_adj_voiture 
+
+def charger_donnees_adj_pied(dico_noeuds,dico_rues):
+    largeur_min_trot = 0.5
+    revettements_eviter = ["Pavés","Végétation","Non revêtu"]
+    importance_eviter = ["Grand axe"]
+    rues_adj_pied = {}
+    for noeud in dico_noeuds:
+        liste_adj = []
+        for rue in dico_noeuds[noeud]:
+            for troncon in dico_noeuds[noeud][rue]:
+                if ((dico_rues[rue][troncon].get("Largeur_trottoir_D",None) == None or dico_rues[rue][troncon].get("Largeur_trottoir_G",None) == None 
+                or dico_rues[rue][troncon]["Largeur_trottoir_D"] >= largeur_min_trot or dico_rues[rue][troncon]["Largeur_trottoir_G"] >= largeur_min_trot) 
+                and (dico_rues[rue][troncon].get("Revetement_trottoir_D",None) == None or dico_rues[rue][troncon].get("Revetement_trottoir_G",None) == None 
+                or dico_rues[rue][troncon]["Revetement_trottoir_D"] not in revettements_eviter or dico_rues[rue][troncon]["Revetement_trottoir_G"] not in revettements_eviter)
+                and (dico_rues[rue][troncon].get("Importance",None) == None or dico_rues[rue][troncon]["Importance"] not in importance_eviter)):
+                        liste_adj.append((rue,troncon))
+        for (rue,troncon) in liste_adj:
+            if (rue,troncon) not in rues_adj_pied.keys() :
+                if len(liste_adj) == 1 :
+                    rues_adj_pied[(rue,troncon)] = []
+                else:
+                    rues_adj_pied[(rue,troncon)] = []
+                    for i in liste_adj :
+                        if i != (rue,troncon) and i not in rues_adj_pied[(rue,troncon)] :
+                            rues_adj_pied[(rue,troncon)].append(i)
+            else:
+                for i in liste_adj :
+                    if i != (rue,troncon) and i not in rues_adj_pied[(rue,troncon)] :
+                        rues_adj_pied[(rue,troncon)].append(i)
+    return rues_adj_pied  
              
 def charger_donnees_adresses():
     f_point_debouche = r"C:/Users/timhu/Documents/1_Scolaire/INSA_2A/Informatique/Projet/Donnees_projet/Points_debouche_adresse.geojson"
@@ -217,46 +337,8 @@ def charger_donnees_centre(dico_adresses_communes):
         dico_adresses_communes[commune]["centre"]={"0":co_centre}
     return dico_adresses_communes
 
-def setup_adjacence_param(rues_adjacentes,dico_rues,largeur_chaussee_m = None ,pente_m = None, revet_chaussee_enl = None ,revet_trot_enl = None ,largeur_trot_max= None):
-    """Réduit le dictionnaire d'adjacence des rues total selon les paramètres de l\'utilisateur donnés par l'application
-    Args:
-        rues_adjacentes (dict): dictionnaire d'adjajacence totale des rues keys (FUV,Troncon) val [list](FUV,Troncon)
-        dico_rues (dict): le dictionnaire des toutes les rues avec leurs propriétés
-        largeur_chaussee_m (float, optional): la largeur maximale choisie par l'utilisateur. Defaults to None.
-        pente_m (float, optional): la pente maximale de la rue choisie par l'utilisateur. Defaults to None.
-        revet_chaussee_enl (list, optional): une liste contenant les revetements que ne veut pas l'utilisateur. Defaults to None.
-        revet_trot_enl (list, optional): une liste contenant les revetement des trotoirs que ne veut pas l'utilisateur. Defaults to None.
-        largeur_trot_max (float, optional): la largeur maximale du trotoir que ne veut pas l'utilisateur. Defaults to None.
-    Returns:
-        dict: le nouveau dictionnaire d'adjacence des rues
-    """
-    nv_rues_adjacentes = rues_adjacentes
-    for key in rues_adjacentes.keys():
-        FUV = key[0]
-        Troncon = key[1]
-        if largeur_chaussee_m != None and dico_rues[FUV][Troncon]["Largeur"] > largeur_chaussee_m:
-            #possibilité de supprimer aussi les référence de ces tuple (fuv,troncon) dans les listes d'adjacences
-            del nv_rues_adjacentes[(FUV,Troncon)]
 
-        if pente_m != None and dico_rues[FUV][Troncon]["Pente_max"] > pente_m :
-            del nv_rues_adjacentes[(FUV,Troncon)]
-
-        if largeur_trot_max != None and (dico_rues[FUV][Troncon]["Largeur_trottoir_D"] > largeur_trot_max or dico_rues[FUV][Troncon]["Largeur_trottoir_G"] > largeur_trot_max ) :
-            del nv_rues_adjacentes[(FUV,Troncon)]
-
-        if revet_chaussee_enl != None :
-            for revet_chausee in revet_chaussee_enl :
-                if dico_rues[FUV][Troncon]["Revetement_chaussee"] == revet_chausee :
-                    del nv_rues_adjacentes[(FUV,Troncon)]
-
-        if revet_trot_enl != None :
-            for revet_trot in revet_trot_enl :
-                if dico_rues[FUV][Troncon]["Revetement_trottoir_D"] == revet_trot or dico_rues[FUV][Troncon]["Revetement_trottoir_G"] == revet_trot :
-                    del nv_rues_adjacentes[(FUV,Troncon)]
-
-    return nv_rues_adjacentes
-
-def give_troncon_nearest_gps(co_gps_user,dico_rues):
+def give_troncon_nearest_gps(co_gps_start, co_gps_end ,dico_rues,choix_transport):
     """Trouve le couple troncon + FUV le plus proche des coordonnées gps fournis par l'utilisateur
     Args:
         co_gps_user (tuple): coordonnées GPS (long,lat)
@@ -264,16 +346,98 @@ def give_troncon_nearest_gps(co_gps_user,dico_rues):
     Returns:
         dict: {(FUV,troncon) : [co_gps]}
     """
-    d_min = 2e+7 #ici on va comparer les distance carré entre elles (et la distance maximale étant la circonsphérence de la terre)
-    id_rue_troncon = (0,0)
-    for fuv in dico_rues.keys():
-        for troncon in dico_rues[fuv].keys():
-            for co_gps in dico_rues[fuv][troncon]['GPS'] :
-                d = dist_lat_lon_deg(co_gps[1],co_gps[0],co_gps_user[1],co_gps_user[0])
-                if d < d_min :
-                    id_rue_troncon = (fuv,troncon)
-                    d_min = d
-    return id_rue_troncon
+    d_min_start = 2e+7 #ici on va comparer les distance carré entre elles (et la distance maximale étant la circonsphérence de la terre)
+    d_min_end = 2e+7 #ici on va comparer les distance carré entre elles (et la distance maximale étant la circonsphérence de la terre)
+    id_rue_troncon_start = (0,0)
+    id_rue_troncon_end = (0,0)
+    if choix_transport == 1 :
+        #velo
+        type_eviter = ["Escalier"]
+        revettements_eviter = ["Végétation","Non revêtu"]
+        importance_eviter = ["Grand axe"]
+        for fuv in dico_rues.keys():
+            for troncon in dico_rues[fuv].keys():
+                if ((dico_rues[fuv][troncon].get("Revetement_chaussee",None) == None or dico_rues[fuv][troncon]["Revetement_chaussee"] not in revettements_eviter)
+                and (dico_rues[fuv][troncon].get("Importance",None) == None or dico_rues[fuv][troncon]["Importance"] not in importance_eviter)
+                and (dico_rues[fuv][troncon].get("Type_circulation",None) == None or dico_rues[fuv][troncon]["Type_circulation"] not in type_eviter)):
+                    for co_gps in dico_rues[fuv][troncon]['GPS'] :
+                        d_start = dist_lat_lon_deg(co_gps[1],co_gps[0],co_gps_start[1],co_gps_start[0])
+                        d_end = dist_lat_lon_deg(co_gps[1],co_gps[0],co_gps_end[1],co_gps_end[0])
+                        if d_start < d_min_start :
+                            id_rue_troncon_start = (fuv,troncon)
+                            d_min_start = d_start
+                        if d_end < d_min_end :
+                            id_rue_troncon_end = (fuv,troncon)
+                            d_min_end = d_end
+
+    elif choix_transport == 2 :
+        #voiture
+        largeur_min_chaussee = 2.5
+        type_eviter = ["Escalier","Bus","Pietons"]
+        revettements_eviter = ["Végétation","Non revêtu"]
+        for fuv in dico_rues.keys():
+            for troncon in dico_rues[fuv].keys():
+                if ((dico_rues[fuv][troncon].get("Largeur",None) == None or dico_rues[fuv][troncon]["Largeur"] >= largeur_min_chaussee)
+                and (dico_rues[fuv][troncon].get("Type_circulation",None) == None or dico_rues[fuv][troncon]["Type_circulation"] not in type_eviter)
+                and (dico_rues[fuv][troncon].get("Revetement_chaussee",None) == None or dico_rues[fuv][troncon]["Revetement_chaussee"] not in revettements_eviter)):
+                    for co_gps in dico_rues[fuv][troncon]['GPS'] :
+                        d_start = dist_lat_lon_deg(co_gps[1],co_gps[0],co_gps_start[1],co_gps_start[0])
+                        d_end = dist_lat_lon_deg(co_gps[1],co_gps[0],co_gps_end[1],co_gps_end[0])
+                        if d_start < d_min_start :
+                            id_rue_troncon_start = (fuv,troncon)
+                            d_min_start = d_start
+                        if d_end < d_min_end :
+                            id_rue_troncon_end = (fuv,troncon)
+                            d_min_end = d_end
+
+    elif choix_transport == 3 :
+        # a pied
+        largeur_min_trot = 0.5
+        revettements_eviter = ["Pavés","Végétation","Non revêtu"]
+        importance_eviter = ["Grand axe"]
+        for fuv in dico_rues.keys():
+            for troncon in dico_rues[fuv].keys():
+                if ((dico_rues[fuv][troncon].get("Largeur_trottoir_D",None) == None or dico_rues[fuv][troncon].get("Largeur_trottoir_G",None) == None 
+                or dico_rues[fuv][troncon]["Largeur_trottoir_D"] >= largeur_min_trot or dico_rues[fuv][troncon]["Largeur_trottoir_G"] >= largeur_min_trot) 
+                and (dico_rues[fuv][troncon].get("Revetement_trottoir_D",None) == None or dico_rues[fuv][troncon].get("Revetement_trottoir_G",None) == None 
+                or dico_rues[fuv][troncon]["Revetement_trottoir_D"] not in revettements_eviter or dico_rues[fuv][troncon]["Revetement_trottoir_G"] not in revettements_eviter)
+                and (dico_rues[fuv][troncon].get("Importance",None) == None or dico_rues[fuv][troncon]["Importance"] not in importance_eviter)):
+                    for co_gps in dico_rues[fuv][troncon]['GPS'] :
+                        d_start = dist_lat_lon_deg(co_gps[1],co_gps[0],co_gps_start[1],co_gps_start[0])
+                        d_end = dist_lat_lon_deg(co_gps[1],co_gps[0],co_gps_end[1],co_gps_end[0])
+                        if d_start < d_min_start :
+                            id_rue_troncon_start = (fuv,troncon)
+                            d_min_start = d_start
+                        if d_end < d_min_end :
+                            id_rue_troncon_end = (fuv,troncon)
+                            d_min_end = d_end
+
+    else :
+        # par defaut poussette
+        pente_max = 8
+        pente_moy = 5
+        largeur_min_trot = 1.5
+        revettements_eviter = ["Pavés","Végétation","Non revêtu"]
+        importance_eviter = ["Grand axe"]
+        for fuv in dico_rues.keys():
+            for troncon in dico_rues[fuv].keys():
+                if ((dico_rues[fuv][troncon].get("Pente_max",None) == None or dico_rues[fuv][troncon]["Pente_max"] <= pente_max) 
+                and (dico_rues[fuv][troncon].get("Pente_moy",None) == None or dico_rues[fuv][troncon]["Pente_moy"] <= pente_moy)
+                and (dico_rues[fuv][troncon].get("Largeur_trottoir_D",None) == None or dico_rues[fuv][troncon].get("Largeur_trottoir_G",None) == None 
+                or dico_rues[fuv][troncon]["Largeur_trottoir_D"] >= largeur_min_trot or dico_rues[fuv][troncon]["Largeur_trottoir_G"] >= largeur_min_trot) 
+                and (dico_rues[fuv][troncon].get("Revetement_trottoir_D",None) == None or dico_rues[fuv][troncon].get("Revetement_trottoir_G",None) == None 
+                or dico_rues[fuv][troncon]["Revetement_trottoir_D"] not in revettements_eviter or dico_rues[fuv][troncon]["Revetement_trottoir_G"] not in revettements_eviter)
+                and (dico_rues[fuv][troncon].get("Importance",None) == None or dico_rues[fuv][troncon]["Importance"] not in importance_eviter)):
+                    for co_gps in dico_rues[fuv][troncon]['GPS'] :
+                        d_start = dist_lat_lon_deg(co_gps[1],co_gps[0],co_gps_start[1],co_gps_start[0])
+                        d_end = dist_lat_lon_deg(co_gps[1],co_gps[0],co_gps_end[1],co_gps_end[0])
+                        if d_start < d_min_start :
+                            id_rue_troncon_start = (fuv,troncon)
+                            d_min_start = d_start
+                        if d_end < d_min_end :
+                            id_rue_troncon_end = (fuv,troncon)
+                            d_min_end = d_end
+    return id_rue_troncon_start, id_rue_troncon_end
 
 def gestion_saisie(saisie_user, l_communes):
     liste_saisie = saisie_user.split(", ")
@@ -287,17 +451,14 @@ def gestion_saisie(saisie_user, l_communes):
         try:
             longitude = float(liste_saisie[-1])
             latitude = float(liste_saisie[0])
-            print(f'Coordonnées GPS reconnues : \nLatitude : {latitude} \nLongitude : {longitude}')
         except:
             commune = liste_saisie.pop(-1)
-            print(f'Commune reconnue : {commune}')
+
     else:
         for i in range(len(l_communes)):
             if liste_saisie[0].lower() in l_communes[i].lower():
                 com_possibles.append(l_communes[i])
-                print(f'Centre commune reconnu : {commune}')
-    if commune == None and com_possibles != []:
-        print('Commune non-reconnue ou non-renseignée.')
+
     if com_possibles == [] and longitude == None and latitude == None:
         liste_rue = liste_saisie[0].split(" ")
         a_suppr = []
@@ -311,10 +472,8 @@ def gestion_saisie(saisie_user, l_communes):
         try :
             numero = int(liste_rue[0])
             liste_rue.pop(0)
-            print(f'Numéro reconnu : {numero}')
         except :
             print("Aucun numéro reconnu ou renseigné.")
-        print(f"Rue saisie: {liste_rue}")
         if len(liste_rue) > 0:
             rue = ""
             for i in range(len(liste_rue)):
@@ -322,10 +481,7 @@ def gestion_saisie(saisie_user, l_communes):
                 if i < len(liste_rue)-1:
                     rue += " "
             rue.strip(",")
-            print(f"Rue detectée : {rue}")
-        else:
-            print("Aucune rue saisie")
-    print()
+
     return numero, rue, commune, com_possibles, latitude, longitude
 
 def give_troncon_address(numero, rue, commune, com_possibles, latitude, longitude, dico_adresses_num, dico_adresses_rues, dico_adresses_communes):
@@ -348,11 +504,9 @@ def give_troncon_address(numero, rue, commune, com_possibles, latitude, longitud
     elif com_possibles != []:
         for com in com_possibles:
             if len(liste_adresses) < nb_prop_max:
-                print(f"Centre commune : {commune}")
                 liste_adresses.append(com+" centre")
     # cas où seul le numero est marqué
     elif commune == None and rue == None and numero != None:
-        print(f"Numéro uniquement : {numero}")
         for num in dico_adresses_num.keys():
             # le numéro existe ou compose un numéro
             if len(liste_adresses) < nb_prop_max and str(numero).lower() == num.lower():
@@ -363,7 +517,6 @@ def give_troncon_address(numero, rue, commune, com_possibles, latitude, longitud
                                 liste_adresses.append(num+" "+rue+", "+commune)
     # cas où au moins le début de la rue est indiqué mais pas la commune
     elif commune == None and rue != None:
-        print(f"Rue en partie : {rue}")
         for voie in dico_adresses_rues.keys():
             # la rue existe
             if len(liste_adresses) < nb_prop_max and rue.lower() in voie.lower():
@@ -393,7 +546,6 @@ def give_troncon_address(numero, rue, commune, com_possibles, latitude, longitud
                                     liste_adresses.append(num+" "+voie+", "+commune)
     #cas ou la commune est saisie en plus de la rue
     elif commune != None and rue != None:
-        print(f"Commune : {commune} + rue : {rue}")
         # on cherche une correspondance de la saisie avec une commune de la base
         com_possibles = []
         for i in range(len(list(dico_adresses_communes.keys()))):
@@ -442,7 +594,7 @@ def dist_lat_lon_deg(start_lat,start_lon,end_lat,end_lon):
         distance = 6371000*math.acos(math.sin(math.radians(start_lat)) * math.sin(math.radians(end_lat)) + math.cos(math.radians(start_lon) - math.radians(end_lon)) * math.cos(math.radians(start_lat)) * math.cos(math.radians(end_lat)))
     return distance
 
-def a_star(start, goal, rues_adjacentes, dico_rues):
+def a_star(start, goal, rues_adjacentes, dico_rues, crit_sens, crit_vitesse):
     queue = PriorityQueue()  # Créer une file de priorité pour les noeuds à explorer
     queue.put((0, start))  # Ajouter le tuple (pondération, noeud) à la file 
     came_from = {}  # Créer un dictionnaire pour stocker les parents de chaque noeud exploré
@@ -455,23 +607,47 @@ def a_star(start, goal, rues_adjacentes, dico_rues):
     while not queue.empty() and not itinerary:
         current = queue.get()[1] #l'indice zéro est celui de priorité
         lat_lon_current = [dico_rues[current[0]][current[1]]['GPS'][0],dico_rues[current[0]][current[1]]['GPS'][-1]]
-        #print(current)
+        
+        if crit_sens:
+            sens_current = dico_rues[current[0]][current[1]]["Sens_circulation"]
+        else:
+            sens_current = "Double"
+        if sens_current == "Conforme":
+            lat_lon_current.pop(0)
+        elif sens_current == "Inverse":
+            lat_lon_current.pop(-1)
+        
         # Récupérer le noeud avec la plus petite priorité dans la file
         if current == goal: 
             itinerary = True
         else:
-            for next_node in rues_adjacentes[current]:# On récupère le tuple coordonées des adj : (lat,lon)
-                new_cost = cost_so_far[current] + dico_rues[next_node[0]][next_node[1]]["Longueur"]  # Calculer le coût pour atteindre le voisin en passant par le noeud actuel
-                if next_node not in cost_so_far.keys() or new_cost < cost_so_far[next_node]:
-                    cost_so_far[next_node] = new_cost  # Mettre à jour le coût pour atteindre le voisin
-                    lat_lon_node = [dico_rues[next_node[0]][next_node[1]]['GPS'][0],dico_rues[next_node[0]][next_node[1]]['GPS'][-1]]
-                    if lat_lon_current[0] == lat_lon_node[0] or lat_lon_current[-1] == lat_lon_node[0]:
-                        co_end_node = lat_lon_node[-1]
+            for next_node in rues_adjacentes[current]:# On récupère le tuple coordonées des adj : (fuv,troncon)
+                
+                lat_lon_node = [dico_rues[next_node[0]][next_node[1]]['GPS'][0],dico_rues[next_node[0]][next_node[1]]['GPS'][-1]]
+                if crit_sens:
+                    sens = dico_rues[next_node[0]][next_node[1]]["Sens_circulation"]
+                else:
+                    sens = "Double"
+                if (sens == "Conforme" and lat_lon_node[0] in lat_lon_current) or (sens == "Inverse" and lat_lon_node[-1] in lat_lon_current) or (sens=="Double"):
+                    if crit_vitesse:
+                        vitesse = int(dico_rues[next_node[0]][next_node[1]]["Limitation_vitesse"])
                     else:
-                        co_end_node = lat_lon_node[0]
-                    priority = new_cost + dist_lat_lon_deg(co_end_node[1],co_end_node[0],co_moy_goal[1],co_moy_goal[0])  # Calculer la priorité pour le voisin
-                    queue.put((priority, next_node))  # Ajouter le voisin à la file avec sa nouvelle priorité
-                    came_from[next_node] = current  # Stocker le noeud actuel comme parent du voisin exploré
+                        vitesse = 1
+                    new_cost = cost_so_far[current] + (dico_rues[next_node[0]][next_node[1]]["Longueur"]/vitesse)  # Calculer le coût pour atteindre le voisin en passant par le noeud actuel
+                    if next_node not in cost_so_far.keys() or new_cost < cost_so_far[next_node]:
+                        cost_so_far[next_node] = new_cost  # Mettre à jour le coût pour atteindre le voisin
+                        #lat_lon_node = [dico_rues[next_node[0]][next_node[1]]['GPS'][0],dico_rues[next_node[0]][next_node[1]]['GPS'][-1]]
+                        if lat_lon_current[0] == lat_lon_node[0] or lat_lon_current[-1] == lat_lon_node[0]:
+                            co_end_node = lat_lon_node[-1]
+                        else:
+                            co_end_node = lat_lon_node[0]
+                        if crit_vitesse:
+                            vitesse_max = 50
+                        else:
+                            vitesse_max = 1
+                        priority = new_cost + (dist_lat_lon_deg(co_end_node[1],co_end_node[0],co_moy_goal[1],co_moy_goal[0])/vitesse_max)  # Calculer la priorité pour le voisin
+                        queue.put((priority, next_node))  # Ajouter le voisin à la file avec sa nouvelle priorité
+                        came_from[next_node] = current  # Stocker le noeud actuel comme parent du voisin exploré
     #print(came_from, '\n\n')
 
     # Pour avoir le parcourt du départ à l'arrivée
@@ -485,7 +661,6 @@ def a_star(start, goal, rues_adjacentes, dico_rues):
         path = []
         dist_path = 0
 
-    print ("Le chemin le plus court est : ", path,', Pour une distance de ', dist_path)
     return path, dist_path
 
 def compute_cross(fuv_tr_pre, fuv_tr_suiv, dico_rues, rues_adjacentes):
@@ -531,7 +706,7 @@ def compute_cross(fuv_tr_pre, fuv_tr_suiv, dico_rues, rues_adjacentes):
                     dico_fuv_tr_xy[categorie][troncon] = [xy_lat_long(co_gps[1],co_gps[0],co_gps_noeud[-1])]
                 else:
                     dico_fuv_tr_xy[categorie][troncon].append(xy_lat_long(co_gps[1],co_gps[0],co_gps_noeud[-1]))
-    return dico_fuv_tr_xy, co_gps_noeud[-1]
+    return dico_fuv_tr_xy, co_gps_noeud[-1],co_gps_noeud[0]
 
 def xy_lat_long(latitude, longitude, latitude_ref):
     #on fait en sorte que la longitude soit comprise entre 0 et 360 et non entre -180 et 180
@@ -650,7 +825,7 @@ def instructions(dico_fuv_tr_carte, fuv_tr_pre, fuv_tr_suiv, dico_rues):
 def consigne_noeud(fuv_tr_pre, fuv_tr_suiv, dico_rues, rues_adjacentes):
     #Recherche des segments adjacents, compilation de leurs co GPS dans un dictionnaire
     #puis passage en co cartesienne
-    dico_fuv_tr_adj, lat_noeud = compute_cross(fuv_tr_pre, fuv_tr_suiv, dico_rues, rues_adjacentes)
+    dico_fuv_tr_adj, lat_noeud, long_noeud = compute_cross(fuv_tr_pre, fuv_tr_suiv, dico_rues, rues_adjacentes)
     #calcul des points qui seront visible et qu'il faut donc prendre en compte pour l'orientation 
     dist_min = calcul_dist_min(dico_fuv_tr_adj)
     i = 1
@@ -692,17 +867,19 @@ class MainWindow():
         # la fonction load_all_datas est lancée au bout de 100ms après le démarage (cf. ligne 679 (plus à jour))
         self.fen_trajet = []
         self.itineraire = []
-        self.depart = (None,None)
-        self.arrivee = (None,None)
+        self.depart = [None,None]
+        self.arrivee = [None,None]
         self.dist_trajet = 0
         self.saisie_user_start = ""
         self.saisie_user_end = ""
+        self.start_select_state = False
+        self.end_select_state = False
         ############################ Fenetre trajet ##########################
         self.toplevel_parcour = None
         self.etape = 0
         self.liste_echelles = [0.3, 1, 3, 10, 30, 100, 300, 1000, 3000, 10000]
-        ########################## Fenetre parametres #########################
-        self.toplevel_params = None
+        self.maker_noeud = None
+        self.timer_id = None
         
     ########################### Fenetre principale #########################
     def initWidget_load(self):
@@ -711,7 +888,7 @@ class MainWindow():
         self.loading_label_1.pack()
         self.loading_label_2 = tk.Label(self.root, text = "Veuillez patienter", font = "Calibri 13")
         self.loading_label_2.pack()
-        self.progress_bar = ttk.Progressbar(self.root, orient = tk.HORIZONTAL, length = 100, mode = 'determinate')
+        self.progress_bar = ttk.Progressbar(self.root, orient = tk.HORIZONTAL, length = 100, value=2, mode = 'determinate')
         self.progress_bar.pack()
         self.root.title("Lyonyroule")
 
@@ -719,7 +896,7 @@ class MainWindow():
         self.loading_label_1.destroy()
         self.loading_label_2.destroy()
         self.progress_bar.destroy()
-        self.root.geometry("1000x600")
+        self.root.geometry("1200x600")
         
         self.map_widget = tkintermapview.TkinterMapView(self.root, width=800, height=600, corner_radius=0)
         self.map_widget.pack(side=tk.LEFT,fill=tk.BOTH)
@@ -762,50 +939,34 @@ class MainWindow():
 
         self.frame_opt = tk.Frame(self.frame_princ,padx=5,pady=5)
 
-        self.choice_poussette = tk.IntVar()
-        self.check_button_poussette = tk.Checkbutton(self.frame_opt,
-                                                     bg = 'gray', fg = 'black', anchor = 'w',
-                                                     text = "  Poussette/Fauteil",
-                                                     onvalue = True, offvalue = False,
-                                                     variable = self.choice_poussette)
+        self.choice_vehicule = tk.IntVar()
+        self.check_button_poussette = tk.Radiobutton(self.frame_opt,
+                                                             bg = 'gray', fg = 'black', anchor = 'w',
+                                                             text = "  Poussette/Fauteil",
+                                                             value=0,
+                                                             variable = self.choice_vehicule,command = self.recup_fuv_troncon)
         #self.check_button_poussette = tk.Checkbutton(self.frame_opt,bg='gray',fg='black',text="Poussette/Fauteil",onvalue=True,offvalue=False,variable=self.choice_poussette)
         self.check_button_poussette.pack(side=tk.TOP,fill=tk.X)
+        
 
-        self.choice_bike = tk.IntVar()
-        self.check_button_bike = tk.Checkbutton(self.frame_opt,
+        self.check_button_bike = tk.Radiobutton(self.frame_opt,
                                                 bg='gray', fg = 'black', anchor = 'w',
-                                                text = "          Vélo", onvalue=True,
-                                                offvalue = False, variable = self.choice_bike)
+                                                text = "          Vélo", value=1, variable = self.choice_vehicule,command = self.recup_fuv_troncon)
         #self.check_button_bike = tk.Checkbutton(self.frame_opt,bg='gray',fg='black',text="Vélo",onvalue=True,offvalue=False,variable=self.choice_bike)
         self.check_button_bike.pack(side=tk.TOP,fill=tk.X)
 
-
-        self.choice_voiture = tk.IntVar()
-        self.check_button_voiture = tk.Checkbutton(self.frame_opt,
+        self.check_button_voiture = tk.Radiobutton(self.frame_opt,
                                                    bg = 'gray',fg = 'black', text = "        Voiture",
-                                                   onvalue = True, anchor = 'w',
-                                                   offvalue=False, variable = self.choice_voiture)
+                                                    anchor = 'w',
+                                                   value=2, variable = self.choice_vehicule,command = self.recup_fuv_troncon)
         self.check_button_voiture.pack(side=tk.TOP,fill=tk.X)
 
-        self.choice_foot = tk.IntVar()
-        self.check_button_foot = tk.Checkbutton(self.frame_opt,
+        self.check_button_foot = tk.Radiobutton(self.frame_opt,
                                                 bg='gray', fg = 'black', anchor = 'w',
-                                                text="          Pied", onvalue = True, 
-                                                offvalue = False, variable = self.choice_foot)
+                                                text="          Pied", value=3, variable = self.choice_vehicule,command = self.recup_fuv_troncon)
         self.check_button_foot.pack(side=tk.TOP,fill=tk.X)
-        # self.choice_voiture = tk.IntVar()
-        # self.check_button_voiture = tk.Checkbutton(self.frame_opt,bg='gray',fg='black',text="Voiture",onvalue=True,offvalue=False,variable=self.choice_voiture)
-        # self.check_button_voiture.pack(side=tk.TOP,fill=tk.X)
-
-        # self.choice_foot = tk.IntVar()
-        # self.check_button_foot = tk.Checkbutton(self.frame_opt,bg='gray',fg='black',text="Pied",onvalue=True,offvalue=False,variable=self.choice_foot)
-        # self.check_button_foot.pack(side=tk.TOP,fill=tk.X)
 
         self.frame_opt.pack(side=tk.TOP,fill=tk.X)
-
-        self.button_opt_av = tk.Button(self.frame_princ,text="Paramètres avancés",bg='gray',fg='black',relief='flat')
-        self.button_opt_av.pack(side=tk.BOTTOM,fill=tk.X,padx=5,pady=5)
-        self.button_opt_av.bind('<Button-1>',self.bouton_param_av)
 
         self.button_research = tk.Button(self.frame_princ,text="Lancer la recherche",bg='gray',fg='black',relief='flat')
         self.button_research.pack(side=tk.BOTTOM,fill=tk.X)
@@ -819,7 +980,7 @@ class MainWindow():
         #frame qui contient les widgets en mode trajet
         self.frame_trajet = tk.Frame(self.root)
 
-        self.var_prop_trajet = tk.StringVar(value=f"Votre Trajet\n {self.var_entry_start.get()}\n vers\n {self.var_entry_end.get()}")
+        self.var_prop_trajet = tk.StringVar(value=f"Votre Trajet\n {self.var_entry_start.get()} \n vers \n {self.var_entry_end.get()}")
 
         self.label_trajet_prop = tk.Label(self.frame_trajet,textvariable=self.var_prop_trajet,padx=5,pady=5)
         self.label_trajet_prop.pack(side=tk.TOP,fill=tk.X)
@@ -829,20 +990,92 @@ class MainWindow():
         self.button_change_iti.bind("<Button-1>",self.bouton_change_iti)
        
         self.button_start_iti = tk.Button(self.frame_trajet,text="Commencer votre itinéraire",bg='gray',fg='black',relief='flat',padx=5,pady=5)
-        self.button_start_iti.pack(side=tk.BOTTOM,fill=tk.X)
+        self.button_start_iti.pack(side=tk.TOP,fill=tk.X)
         self.button_start_iti.bind("<Button-1>",self.open_window_trajet)
+        
+        self.button_automatique = tk.Button(self.frame_trajet, text="Lecture automatique",bg='gray',fg='black',relief='flat',padx=5,pady=5)
+        self.button_automatique.pack(side=tk.TOP,fill=tk.X)
+        self.button_automatique.bind("<Button-1>",self.lancement_auto)
+        
+        self.vitesse = tk.DoubleVar()
+        self.scale_vitesse = tk.Scale(self.frame_trajet, orient='horizontal', from_= 10, to=100, showvalue = 0, resolution=2, tickinterval=10, length=200, variable = self.vitesse, font=("Calibri", 8), label = "Vitesse lecture auto (%)", command = self.maj_auto)
+        self.scale_vitesse.pack(side=tk.TOP,fill=tk.X)
         
         self.frame_detail_etapes = ScrolledFrame(self.root, width = 150)
         self.frame_detail_etapes.pack()
+        
+        self.frame_detail_etapes.bind_scroll_wheel(self.root)
+        
         self.inner_frame_etapes = self.frame_detail_etapes.display_widget(tk.Frame)
-        label = tk.Label(self.inner_frame_etapes, anchor="center", justify="center", text="Détail de l'itinéraire :\n")
-        label.pack(side=tk.TOP, fill = tk.X)    
-
+        
+        self.label_detail_etapes = tk.Label(self.inner_frame_etapes, anchor="center", justify="center", text="Détail de l'itinéraire :\n")
+        self.label_detail_etapes.pack(side=tk.TOP, fill = tk.X)
+        
         self.frame_trajet.pack_forget()
         self.frame_detail_etapes.pack_forget()
 
     def loop(self):
         self.root.mainloop()
+        
+    def lancement_auto(self, event):
+        if (self.toplevel_parcour != None) :
+            self.toplevel_parcour.focus_set()
+        if self.button_automatique.config('bg')[-1] == 'gray':
+            self.button_automatique.config(bg='green')
+            if (self.toplevel_parcour == None) :
+                self.etape = 0
+                self.toplevel_parcour = tk.Toplevel(self.root)
+                self.init_widget_parcour()
+                self.show_iti(self.itineraire[self.etape],self.itineraire[self.etape+1])
+                self.temps_pause = int(1000/(self.vitesse.get()/100))
+                self.time_mem = int(time.time()*1000)
+                self.timer_id = self.root.after(self.temps_pause, self.automatique)
+            else :
+                self.timer_id = self.root.after(10, self.automatique)
+                        
+        else:
+            self.button_automatique.config(bg='gray')
+            self.root.after_cancel(self.timer_id)
+            
+                
+    def maj_auto(self, val_vitesse):
+        if (self.toplevel_parcour != None) :
+            self.toplevel_parcour.focus_set()
+        if self.button_automatique.config('bg')[-1] == 'green':
+            time_now = int(time.time()*1000)
+            delai = time_now-self.time_mem
+            self.temps_pause = int(1000/(int(val_vitesse)/100))
+            if delai < self.temps_pause:
+                self.root.after_cancel(self.timer_id)
+                self.timer_id = self.root.after((self.temps_pause - delai), self.automatique)            
+            else:
+                self.root.after_cancel(self.timer_id)
+                self.timer_id = self.root.after(10, self.automatique)
+            
+    def automatique(self):
+        if self.etape + 2 < len(self.itineraire):
+            self.etape += 1
+            self.temps_pause = int(1000/(self.vitesse.get()/100))
+            
+            self.main_canvas.delete(self.ligne_suiv)
+            self.main_canvas.delete(self.ligne_pre)
+            self.main_canvas.delete(self.rond_noeud)
+            self.main_canvas.delete(self.ligne_nord)
+            self.main_canvas.delete(self.texte_nord)
+            self.main_canvas.delete(self.rect_nord)
+            self.main_canvas.delete(self.rect_echelle)
+            self.main_canvas.delete(self.text_echelle)
+            for ligne in self.liste_ligne_adj :
+                self.main_canvas.delete(ligne)
+            for rect in self.liste_rect_echelle :
+                self.main_canvas.delete(rect)
+            self.show_iti(self.itineraire[self.etape],self.itineraire[self.etape+1])
+            self.time_mem = int(time.time()*1000)
+            self.root.after_cancel(self.timer_id)
+            self.timer_id = self.root.after(self.temps_pause, self.automatique)
+        else:
+            self.root.after_cancel(self.timer_id)
+            self.button_automatique.config(bg='gray')
         
     def get_entry_start(self, event):
         if event.widget.get() != self.saisie_user_start and event.widget.get() != "":
@@ -851,7 +1084,8 @@ class MainWindow():
             self.liste_depart = give_troncon_address(numero, rue, commune, com_possibles, latitude, longitude, self.dico_adresses_num, self.dico_adresses_rues, self.dico_adresses_communes)
             self.start_selection.configure(values = self.liste_depart)
         self.start_selection.configure(foreground = "red")
-        self.depart = (None,None)
+        self.start_select_state = False
+        self.depart = [None,None]
         if len(self.liste_depart) == 1 and len(event.widget.get()) > 1:
             self.start_selection.event_generate('<Down>',when="tail")
     
@@ -865,6 +1099,7 @@ class MainWindow():
             
     def choose_start(self, event):
         self.start_selection.configure(foreground = "green")
+        self.start_select_state = True
         saisie = event.widget.get().split(", ")
         try:
             longitude = float(saisie[1])
@@ -897,12 +1132,10 @@ class MainWindow():
                     if i < len(choix)-1:
                             rue += " "
                 co_gps = self.dico_adresses_num[numero][rue][commune]
-        self.depart = give_troncon_nearest_gps(co_gps, self.dico_rues)
+        self.depart = co_gps
         
-        print()
-        print(f"FUV+TRONCON départ : {self.depart}")
-        print()
-    
+        self.root.after(100, self.recup_fuv_troncon)  
+        
     def effacer_start(self,event):
         if self.start_selection.get() == "Départ":
             self.start_selection.set("")
@@ -913,6 +1146,7 @@ class MainWindow():
         if saisie == "":
             self.start_selection.set("Départ")
             self.start_selection.configure(foreground = "black")
+            self.start_select_state = False
             
     def get_entry_end(self, event):
         if event.widget.get() != self.saisie_user_end and event.widget.get() != "":
@@ -921,7 +1155,8 @@ class MainWindow():
             self.liste_arrivee = give_troncon_address(numero, rue, commune, com_possibles, latitude, longitude, self.dico_adresses_num, self.dico_adresses_rues, self.dico_adresses_communes)
             self.end_selection.configure(values = self.liste_arrivee)
         self.end_selection.configure(foreground = "red")
-        self.arrivee = (None,None)
+        self.end_select_state = False
+        self.arrivee = [None,None]
         if len(self.liste_arrivee) == 1 and len(event.widget.get()) > 1:
             self.end_selection.event_generate('<Down>',when="tail")
     
@@ -935,6 +1170,7 @@ class MainWindow():
     
     def choose_end(self, event):
         self.end_selection.configure(foreground = "green")
+        self.end_select_state = True
         saisie = event.widget.get().split(", ")
         try:
             longitude = float(saisie[1])
@@ -967,11 +1203,10 @@ class MainWindow():
                     if i < len(choix)-1:
                             rue += " "
                 co_gps = self.dico_adresses_num[numero][rue][commune]
-        self.arrivee = give_troncon_nearest_gps(co_gps, self.dico_rues)
-        
-        print()
-        print(self.arrivee)
-        print()
+        self.arrivee = co_gps
+
+        self.root.after(100, self.recup_fuv_troncon)
+
     
     def effacer_end(self,event):
         if self.end_selection.get() == "Arrivée":
@@ -983,44 +1218,59 @@ class MainWindow():
         if saisie == "":
             self.end_selection.set("Arrivée")
             self.end_selection.configure(foreground = "black")
+            self.end_select_state = False
+            
+    def recup_fuv_troncon(self):
+        if self.start_select_state and self.end_select_state :
+            self.depart_fuv, self.arrivee_fuv = give_troncon_nearest_gps(self.depart, self.arrivee, self.dico_rues, self.choice_vehicule.get())
 
-    def bouton_param_av(self,event):
-        print("Vous avez cliquez sur le boutons des parametres avancés")
-        print(f"Ville de départ {self.var_entry_start.get()}")
-        print(f"Ville d'arrivee {self.var_entry_end.get()}")
-        print(f"Choix Poussette {self.choice_poussette.get()}")
-
-        # self.dialog_params_av = TopLevelParams(self.root)
-        if (self.toplevel_params != None) :
-            self.toplevel_params.destroy()
-        self.toplevel_params = tk.Toplevel(self.root)
-        self.init_widget_param()
 
     def start_research(self,event):
         """Fonction callback du bouton de calcul de l'itineraire, il lance la recherche de l'itineraire
         Args:
             event (dict): the tk event object return after the user event
         """
-        if self.depart != (None,None) and self.arrivee != (None,None) and self.depart != self.arrivee:
-            if (self.toplevel_params != None) :
-                self.toplevel_params.destroy()
-            self.itineraire, self.dist_trajet = a_star(self.depart,self.arrivee,self.carrefour_adjacences, self.dico_rues)
-            print(self.dico_rues[self.itineraire[0][0]][self.itineraire[0][1]]['GPS'])
-            #on cache la frame principale et affiche la frame itineraire
-            self.frame_princ.pack_forget()
-            self.var_prop_trajet.set(f"Votre Trajet\n {self.var_entry_start.get()} vers {self.var_entry_end.get()}")
-            self.frame_trajet.pack(fill=tk.Y)
-            self.frame_detail_etapes.pack(fill=tk.BOTH)
-            
-            # on appelle la fonction qui affiche la carte principale
-            self.show_large_map()
-            self.l_button_etape = []
-            for i in range(len(self.itineraire)-1):
-                text_detail_etapes = str(i+1) + " : " + consigne_noeud(self.itineraire[i], self.itineraire[i+1], self.dico_rues, self.carrefour_adjacences)
-                button_etape = tk.Button(self.inner_frame_etapes,text=text_detail_etapes,bg='gray',fg='black', command = lambda idx=i: self.open_window_trajet_middle(idx))
-                button_etape.pack(side = tk.TOP, fill = tk.X)
-                self.l_button_etape.append(button_etape)
-                #self.button_etape.bind("<Button-1>",self.open_window_trajet)
+        crit_sens = False
+        crit_vitesse = False
+        if self.choice_vehicule.get() == 1 :
+            #user a choisi velo
+            self.carrefour_adjacences_choix = self.carrefour_adjacences_velo
+            crit_sens = True
+
+        elif self.choice_vehicule.get() == 2 :
+            #user a choisi voiture
+            self.carrefour_adjacences_choix = self.carrefour_adjacences_voiture
+            crit_sens = True
+            crit_vitesse = True
+
+        elif self.choice_vehicule.get() == 3 :
+            #user a choisi a pied
+            self.carrefour_adjacences_choix = self.carrefour_adjacences_pied
+
+        else :
+            #l'utilisateur choisi poussette fauteil
+            self.carrefour_adjacences_choix = self.carrefour_adjacences_poussette
+        
+        if self.depart_fuv != (None,None) and self.arrivee_fuv != (None,None) and self.depart_fuv != self.arrivee_fuv:
+            self.itineraire, self.dist_trajet = a_star(self.depart_fuv,self.arrivee_fuv,self.carrefour_adjacences_choix, self.dico_rues, crit_sens, crit_vitesse)
+            if len(self.itineraire) > 1:
+                print(self.dico_rues[self.itineraire[0][0]][self.itineraire[0][1]]['GPS'])
+                #on cache la frame principale et affiche la frame itineraire
+                self.frame_princ.pack_forget()
+                self.var_prop_trajet.set(f"Votre Trajet\n {self.var_entry_start.get()} \n vers \n {self.var_entry_end.get()}")
+                self.frame_trajet.pack(fill=tk.Y)
+                self.frame_detail_etapes.pack(fill=tk.BOTH)
+                # on appelle la fonction qui affiche la carte principale
+                self.show_large_map()
+                self.l_button_etape = []
+                for i in range(len(self.itineraire)-1):
+                    #!!!
+                    text_detail_etapes = str(i+1) + " : " + consigne_noeud(self.itineraire[i], self.itineraire[i+1], self.dico_rues, self.carrefour_adjacences_choix)
+                    button_etape = tk.Button(self.inner_frame_etapes,text=text_detail_etapes,bg='gray',fg='black', command = lambda idx=i: self.open_window_trajet_middle(idx))
+                    button_etape.pack(side = tk.TOP, fill = tk.X)
+                    self.l_button_etape.append(button_etape)
+            else :
+                messagebox.showinfo("Itinéraire Non trouvé", "Aucun itinéraires n'existent avec les paramètres selectionnés.")
         else :
             messagebox.showinfo("Itinéraire incomplet", "Adresse(s) de départ et/ou d'arrivée non renseignée(s) ou non reconnue(s). \nVeuillez compléter les champs manquants.")
             
@@ -1029,16 +1279,10 @@ class MainWindow():
         for fuv_rue in self.itineraire :
             co_gps_liste = self.dico_rues[fuv_rue[0]][fuv_rue[1]]['GPS']
             if len(co_trajet) != 0 :
-                if (co_gps_liste[0][1],co_gps_liste[0][0]) == co_trajet[len(co_trajet)-1] or (co_gps_liste[0][1],co_gps_liste[0][0]) == co_trajet[0]:
-                    for co_gps in co_gps_liste :
+                if (co_gps_liste[-1][1],co_gps_liste[-1][0]) == co_trajet[-1]:
+                    co_gps_liste.reverse()
+                for co_gps in co_gps_liste :
                         co_trajet.append((co_gps[1],co_gps[0]))
-                elif (co_gps_liste[len(co_gps_liste)-1][1],co_gps_liste[len(co_gps_liste)-1][0]) == co_trajet[len(co_trajet)-1] or (co_gps_liste[len(co_gps_liste)-1][1],co_gps_liste[len(co_gps_liste)-1][0]) == co_trajet[0]:
-                    for i in range(len(co_gps_liste)-1,-1,-1):
-                        co_trajet.append((co_gps_liste[i][1],co_gps_liste[i][0]))
-
-                #else : 
-                    #print((co_gps_liste[0][1],co_gps_liste[0][0]),co_trajet[len(co_trajet)-1],co_gps_liste[len(co_gps_liste)-1][1],co_gps_liste[len(co_gps_liste)-1][0])
-
             else :
                 fuv_rue_suiv = self.itineraire[1]
                 co_gps_liste_suiv = self.dico_rues[fuv_rue_suiv[0]][fuv_rue_suiv[1]]['GPS']
@@ -1047,23 +1291,38 @@ class MainWindow():
                 for co_gps in co_gps_liste :
                     co_trajet.append((co_gps[1],co_gps[0]))
 
-        print(co_trajet)
         #ajout d'un marker au debut et fin
-        marker_debut = self.map_widget.set_marker(co_trajet.pop(0)[0],co_trajet.pop(0)[1],text="Start")
-        marker_fin = self.map_widget.set_marker(co_trajet.pop()[0],co_trajet.pop()[1],text="End")
-        co_trajet.insert(0,marker_debut.position)
-        co_trajet.insert(len(co_trajet)-1,marker_fin.position)
+        print()
+        print(co_trajet)
+        marker_debut = self.map_widget.set_marker(co_trajet[0][0],co_trajet[0][1],text="Départ")
+        marker_fin = self.map_widget.set_marker(co_trajet[-1][0],co_trajet[-1][1],text="Arrivée")
+        marker_ad_debut = self.map_widget.set_marker(self.depart[-1],self.depart[0],text=f"Adresse\nDépart")
+        marker_ad_fin = self.map_widget.set_marker(self.arrivee[-1],self.arrivee[0],text=f"Adresse\nArrivée")
+        # co_trajet.insert(0,marker_debut.position)
+        # co_trajet.insert(len(co_trajet)-1,marker_fin.position)
+        # print(co_trajet)
         self.map_widget.set_path(co_trajet)
         
     def bouton_change_iti(self,event):
         msg_user = messagebox.askyesno("Changer d'itineraire ?","Voulez vous vraiment changer d'itinéraire ?\n Celui-ci sera perdu")
         if msg_user == True :
             if (self.toplevel_parcour != None) :
-                self.toplevel_parcour.destroy() 
+                self.toplevel_parcour.destroy()
+                if self.button_automatique.config('bg')[-1] == 'green':
+                    self.button_automatique.config(bg='gray')
+                    self.root.after_cancel(self.timer_id)
+            for button in self.l_button_etape:
+                button.destroy()
             #Affiche de nouveau le frame principal
             self.frame_trajet.pack_forget()
             self.frame_detail_etapes.pack_forget()
             self.frame_princ.pack(fill=tk.Y)
+            
+            # on enleve le trajet actuel
+            self.map_widget.delete_all_path()
+            self.map_widget.delete_all_marker()
+            self.map_widget.set_position(45.76177569754233, 4.8358160526802685)  #on centre sur Lyon
+            self.map_widget.set_zoom(11)
      
     def open_window_trajet(self,event):
         """Fonction callback du bouton commencer le trajet, ouvre la fenetre du trajet carrefour par carrefour
@@ -1073,6 +1332,9 @@ class MainWindow():
         self.etape = 0
         if (self.toplevel_parcour != None) :
             self.toplevel_parcour.destroy()
+            if self.button_automatique.config('bg')[-1] == 'green':
+                self.button_automatique.config(bg='gray')
+                self.root.after_cancel(self.timer_id)
         self.toplevel_parcour = tk.Toplevel(self.root)
         self.init_widget_parcour()
         self.show_iti(self.itineraire[self.etape],self.itineraire[self.etape+1])
@@ -1085,42 +1347,46 @@ class MainWindow():
         self.etape = idx
         if (self.toplevel_parcour != None) :
             self.toplevel_parcour.destroy()
+            if self.button_automatique.config('bg')[-1] == 'green':
+                self.button_automatique.config(bg='gray')
+                self.root.after_cancel(self.timer_id)
         self.toplevel_parcour = tk.Toplevel(self.root)
         self.init_widget_parcour()
         self.show_iti(self.itineraire[self.etape],self.itineraire[self.etape+1])
 
-    def load_all_datas(self):
+    def load_all_datas(self):  #!!!
         self.dico_noeuds, self.dico_rues = charger_donnees_troncon()
-        self.progress_bar['value'] = 25
+        self.progress_bar['value'] = 19
         self.root.update_idletasks()
-        self.dico_noeuds, self.dico_rues = charger_donnees_chausses(self.dico_noeuds, self.dico_rues)
-        self.progress_bar['value'] = 50
+        self.dico_noeuds, self.dico_rues = charger_donnees_chaussees(self.dico_noeuds, self.dico_rues)
+        self.progress_bar['value'] = 37
         self.root.update_idletasks()
         self.dico_noeuds = correction_dico_noeuds(self.dico_noeuds)
-        self.progress_bar['value'] = 60
+        self.progress_bar['value'] = 44
         self.root.update_idletasks()
         self.carrefour_adjacences = charger_donnees_adj(self.dico_noeuds)
-        self.progress_bar['value'] = 75
+        self.progress_bar['value'] = 51
+        self.root.update_idletasks()
+        self.carrefour_adjacences_poussette = charger_donnees_adj_poussette(self.dico_noeuds,self.dico_rues)
+        self.progress_bar['value'] = 58
+        self.root.update_idletasks()
+        self.carrefour_adjacences_velo = charger_donnees_adj_velo(self.dico_noeuds,self.dico_rues)
+        self.progress_bar['value'] = 65
+        self.root.update_idletasks()
+        self.carrefour_adjacences_voiture = charger_donnees_adj_voiture(self.dico_noeuds,self.dico_rues)
+        self.progress_bar['value'] = 73
+        self.root.update_idletasks()
+        self.carrefour_adjacences_pied = charger_donnees_adj_pied(self.dico_noeuds,self.dico_rues)
+        self.progress_bar['value'] = 80
         self.root.update_idletasks()
         self.dico_adresses_num, self.dico_adresses_rues, self.dico_adresses_communes = charger_donnees_adresses()
-        self.progress_bar['value'] = 95
+        self.progress_bar['value'] = 96
         self.root.update_idletasks()
         self.dico_adresses_communes = charger_donnees_centre(self.dico_adresses_communes)
         self.progress_bar['value'] = 100
         self.root.update_idletasks()
         #une fois le chargement de donnees effectue, on met a jour l'affichage pour afficher le menu d'acceuil
         self.root.after(500,self.initWidget_main) 
-    
-    ########################### Fenetre parametres #########################
-        
-    def init_widget_param(self):
-        self.var_width_road = tk.DoubleVar(value=5.0)
-        self.slidder_width_road = tk.Scale(self.toplevel_params,from_=0,to=20,variable=self.var_width_road,tickinterval=5,resolution=0.5,label="Seuil largeur de la chaussée",orient=tk.HORIZONTAL)
-        self.slidder_width_road.pack(fill=tk.X)
-
-        self.var_slope_max = tk.DoubleVar(value=4.0)
-        self.slidder_slope_max = tk.Scale(self.toplevel_params,label="Pente maximale",from_=0,to=12,resolution=0.1,tickinterval=1.0,orient=tk.HORIZONTAL,variable=self.var_slope_max)
-        self.slidder_slope_max.pack(fill=tk.X)
 
     ############################ Fenetre trajet ##########################
 
@@ -1189,11 +1455,17 @@ class MainWindow():
             self.show_iti(self.itineraire[self.etape],self.itineraire[self.etape+1])
         else:
             self.toplevel_parcour.destroy()
+            self.maker_noeud.delete()
+            if self.button_automatique.config('bg')[-1] == 'green':
+                self.button_automatique.config(bg='gray')
+                self.root.after_cancel(self.timer_id)
             
     def show_iti(self, fuv_tr_pre, fuv_tr_suiv):
+        if self.maker_noeud != None : 
+            self.maker_noeud.delete()
         #Recherche des segments adjacents, compilation de leurs co GPS dans un dictionnaire
         #puis passage en co cartesienne
-        dico_fuv_tr_adj, lat_noeud = compute_cross(fuv_tr_pre, fuv_tr_suiv, self.dico_rues, self.carrefour_adjacences)
+        dico_fuv_tr_adj, lat_noeud, long_noeud = compute_cross(fuv_tr_pre, fuv_tr_suiv, self.dico_rues, self.carrefour_adjacences)
         #calcul des points qui seront visible et qu'il faut donc prendre en compte pour l'orientation 
         dist_min = calcul_dist_min(dico_fuv_tr_adj)
         i = 1
@@ -1233,6 +1505,11 @@ class MainWindow():
         self.dessine_noeud(dico_fuv_tr_carte, fuv_tr_pre, fuv_tr_suiv, co_nord, cote_echelle, echelle_choisie)
         text_instruction = instructions(dico_fuv_tr_carte, fuv_tr_pre, fuv_tr_suiv, self.dico_rues)
         self.label_instruction.configure(text = str(self.etape + 1) + " : " + text_instruction)
+        
+        # mettre la position du carrefour actuel
+        self.maker_noeud = self.map_widget.set_marker(lat_noeud,long_noeud,"Actuel")
+        self.map_widget.set_position(lat_noeud,long_noeud)
+        self.map_widget.set_zoom(17)
         
     def dessine_noeud(self, dico_fuv_tr_carte, fuv_tr_pre, fuv_tr_suiv, co_nord, cote_echelle, echelle_choisie):
         #on trace les eventuels chemins adjacents
