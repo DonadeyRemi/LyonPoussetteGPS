@@ -34,14 +34,15 @@ def charger_donnees_troncon():
         dico_rues[rue][troncon]["Sens_circulation"] = segment["properties"]["senscirculation"]
         dico_rues[rue][troncon]["Nom"] = segment["properties"]["nom"]
         dico_rues[rue][troncon]["Commune"] = segment["properties"]["nomcommune"]
-        dico_rues[rue][troncon]["Code_postal"] = segment["properties"]["codeinsee"]
         dico_rues[rue][troncon]["Denomination_route"] = segment["properties"]["denomroutiere"]
+        dico_rues[rue][troncon]["Limitation_vitesse"] = "50"
         longueur_seg = 0
         
         for i in range(len(co_gps_rue)-1):
             longueur_seg += dist_lat_lon_deg(co_gps_rue[i][1],co_gps_rue[i][0],co_gps_rue[i+1][1],co_gps_rue[i+1][0])
         dico_rues[rue][troncon]["Longueur"] = longueur_seg
         
+        co_gps_rue = [co_gps_rue[0],co_gps_rue[-1]]
         for co_gps in co_gps_rue:
             tuple_gps = (co_gps[0],co_gps[1])
             if tuple_gps not in dico_noeuds.keys():
@@ -52,10 +53,10 @@ def charger_donnees_troncon():
                 dico_noeuds[tuple_gps][rue].append(troncon)
     return dico_noeuds, dico_rues
 
-def charger_donnees_chausses(dico_noeuds, dico_rues):                
-    f_chausses_geojson = "chaussees_trotoirs.geojson"
+def charger_donnees_chaussees(dico_noeuds, dico_rues):                
+    f_chaussees_geojson = "chaussees_trotoirs.geojson"
     arrondi_gps = 12
-    with open(f_chausses_geojson,encoding='utf-8') as fichier :
+    with open(f_chaussees_geojson,encoding='utf-8') as fichier :
         data = json.load(fichier)
     for segment in data["features"]:
         proprietes = segment["properties"]
@@ -71,20 +72,17 @@ def charger_donnees_chausses(dico_noeuds, dico_rues):
                 dico_rues[rue][troncon]["Nom"] = proprietes["nomvoie1"]
             if dico_rues[rue][troncon]["Commune"] == "":
                 dico_rues[rue][troncon]["Commune"] = proprietes["commune1"]
-            if dico_rues[rue][troncon]["Code_postal"] == "":
-                dico_rues[rue][troncon]["Code_postal"] = proprietes["insee1"]
             if dico_rues[rue][troncon]["Denomination_route"] == "" :
                 dico_rues[rue][troncon]["Denomination_route"] = proprietes["denominationroutiere"]
+            if dico_rues[rue][troncon]["Sens_circulation"] == "" :
+                dico_rues[rue][troncon]["Sens_circulation"] = "Double"
             
         else:    
             if rue not in dico_rues.keys():
                 dico_rues[rue] = {troncon: {"GPS" : co_gps_rue} }
             else:
                 dico_rues[rue][troncon] = {"GPS" : co_gps_rue}
-            if proprietes["senscirculation"] == "Double":
-                dico_rues[rue][troncon]["Sens_circulation"] = proprietes["senscirculation"]
-            else:
-                dico_rues[rue][troncon]["Sens_circulation"] = None
+            dico_rues[rue][troncon]["Sens_circulation"] = "Double"
             dico_rues[rue][troncon]["Nom"] = proprietes["nomvoie1"]
             dico_rues[rue][troncon]["Commune"] = proprietes["commune1"]
             dico_rues[rue][troncon]["Code_postal"] = proprietes["insee1"]
@@ -94,6 +92,8 @@ def charger_donnees_chausses(dico_noeuds, dico_rues):
         if dico_rues[rue][troncon]["Longueur"] == None:
             dico_rues[rue][troncon]["Longueur"] = proprietes["longueurcalculee"]
         dico_rues[rue][troncon]["Limitation_vitesse"] = proprietes["limitationvitesse"]
+        if dico_rues[rue][troncon]["Limitation_vitesse"] == "":
+            dico_rues[rue][troncon]["Limitation_vitesse"] = "50"
         dico_rues[rue][troncon]["Largeur"] = proprietes.get("largeurcirculeechaussee",None)
         dico_rues[rue][troncon]["Pente_max"] = proprietes.get("pentemaximale",None)
         dico_rues[rue][troncon]["Pente_moy"] = proprietes.get("pentemoyenne",None)
@@ -103,6 +103,7 @@ def charger_donnees_chausses(dico_noeuds, dico_rues):
         dico_rues[rue][troncon]["Revetement_trottoir_G"] = proprietes["revetementtrottoirgauche"]
         dico_rues[rue][troncon]["Largeur_trottoir_G"] = proprietes.get("largeurtrottoirgauche",None)
         
+        co_gps_rue = [co_gps_rue[0],co_gps_rue[-1]]
         for co_gps in co_gps_rue:
             tuple_gps = (co_gps[0],co_gps[1])
             if tuple_gps not in dico_noeuds.keys():
@@ -124,18 +125,46 @@ def correction_dico_noeuds(dico_noeuds):
         dico_noeuds.pop(tuple_gps)
     return dico_noeuds
     
+def charger_donnees_adj(dico_noeuds):
+    rues_adj_gps = {}
+    for noeud in dico_noeuds:
+        liste_adj = []
+        for rue in dico_noeuds[noeud]:
+            for troncon in dico_noeuds[noeud][rue]:
+                liste_adj.append((rue,troncon))
+        for (rue,troncon) in liste_adj:
+            if (rue,troncon) not in rues_adj_gps.keys() :
+                if len(liste_adj) == 1 :
+                    rues_adj_gps[(rue,troncon)] = []
+                else:
+                    rues_adj_gps[(rue,troncon)] = []
+                    for i in liste_adj :
+                        if i != (rue,troncon) and i not in rues_adj_gps[(rue,troncon)] :
+                            rues_adj_gps[(rue,troncon)].append(i)
+            else:
+                for i in liste_adj :
+                    if i != (rue,troncon) and i not in rues_adj_gps[(rue,troncon)]:
+                        rues_adj_gps[(rue,troncon)].append(i)
+    return rues_adj_gps  
+
 def charger_donnees_adj_poussette(dico_noeuds,dico_rues):
-    pente_max = 5
+    pente_max = 8
+    pente_moy = 5
     largeur_min_trot = 1.5
+    revettements_eviter = ["Pavés","Végétation","Non revêtu"]
+    importance_eviter = ["Grand axe"]
     rues_adj_poussette = {}
     for noeud in dico_noeuds:
         liste_adj = []
         for rue in dico_noeuds[noeud]:
             for troncon in dico_noeuds[noeud][rue]:
-                if (rue,troncon) == ('21467', 'T27207') :
-                    print()
-                if (dico_rues[rue][troncon].get("Pente_max",None) != None) and (dico_rues[rue][troncon].get("Largeur_trottoir_D",None) != None) and (dico_rues[rue][troncon].get("Largeur_trottoir_G",None) != None):
-                    if (dico_rues[rue][troncon]["Pente_max"] <= pente_max ) and (dico_rues[rue][troncon]["Largeur_trottoir_D"] >= largeur_min_trot) and (dico_rues[rue][troncon]["Largeur_trottoir_G"] >= largeur_min_trot):
+                if ((dico_rues[rue][troncon].get("Pente_max",None) == None or dico_rues[rue][troncon]["Pente_max"] <= pente_max) 
+                and (dico_rues[rue][troncon].get("Pente_moy",None) == None or dico_rues[rue][troncon]["Pente_moy"] <= pente_moy)
+                and (dico_rues[rue][troncon].get("Largeur_trottoir_D",None) == None or dico_rues[rue][troncon].get("Largeur_trottoir_G",None) == None 
+                or dico_rues[rue][troncon]["Largeur_trottoir_D"] >= largeur_min_trot or dico_rues[rue][troncon]["Largeur_trottoir_G"] >= largeur_min_trot) 
+                and (dico_rues[rue][troncon].get("Revetement_trottoir_D",None) == None or dico_rues[rue][troncon].get("Revetement_trottoir_G",None) == None 
+                or dico_rues[rue][troncon]["Revetement_trottoir_D"] not in revettements_eviter or dico_rues[rue][troncon]["Revetement_trottoir_G"] not in revettements_eviter)
+                and (dico_rues[rue][troncon].get("Importance",None) == None or dico_rues[rue][troncon]["Importance"] not in importance_eviter)):
                         liste_adj.append((rue,troncon))
         for (rue,troncon) in liste_adj:
             if (rue,troncon) not in rues_adj_poussette.keys() :
@@ -153,13 +182,18 @@ def charger_donnees_adj_poussette(dico_noeuds,dico_rues):
     return rues_adj_poussette  
 
 def charger_donnees_adj_velo(dico_noeuds,dico_rues):
-    #mettre l'importance des routes
+    type_eviter = ["Escalier"]
+    revettements_eviter = ["Végétation","Non revêtu"]
+    importance_eviter = ["Grand axe"]
     rues_adj_velo = {}
     for noeud in dico_noeuds:
         liste_adj = []
         for rue in dico_noeuds[noeud]:
             for troncon in dico_noeuds[noeud][rue]:
-                liste_adj.append((rue,troncon))
+                if ((dico_rues[rue][troncon].get("Revetement_chaussee",None) == None or dico_rues[rue][troncon]["Revetement_chaussee"] not in revettements_eviter)
+                and (dico_rues[rue][troncon].get("Importance",None) == None or dico_rues[rue][troncon]["Importance"] not in importance_eviter)
+                and (dico_rues[rue][troncon].get("Type_circulation",None) == None or dico_rues[rue][troncon]["Type_circulation"] not in type_eviter)):
+                        liste_adj.append((rue,troncon))
         for (rue,troncon) in liste_adj:
             if (rue,troncon) not in rues_adj_velo.keys() :
                 if len(liste_adj) == 1 :
@@ -171,20 +205,23 @@ def charger_donnees_adj_velo(dico_noeuds,dico_rues):
                             rues_adj_velo[(rue,troncon)].append(i)
             else:
                 for i in liste_adj :
-                    if i != (rue,troncon) and i not in rues_adj_velo[(rue,troncon)] :
+                    if i != (rue,troncon) and i not in rues_adj_velo[(rue,troncon)]:
                         rues_adj_velo[(rue,troncon)].append(i)
-    return rues_adj_velo 
+    return rues_adj_velo
 
 def charger_donnees_adj_voiture(dico_noeuds,dico_rues):
     largeur_min_chaussee = 2.5
+    type_eviter = ["Escalier","Bus","Pietons"]
+    revettements_eviter = ["Végétation","Non revêtu"]
     rues_adj_voiture = {}
     for noeud in dico_noeuds:
         liste_adj = []
         for rue in dico_noeuds[noeud]:
             for troncon in dico_noeuds[noeud][rue]:
-                if (dico_rues[rue][troncon].get("Largeur",None) != None):
-                    if (dico_rues[rue][troncon]["Largeur"] >= largeur_min_chaussee):
-                        liste_adj.append((rue,troncon))
+                if ((dico_rues[rue][troncon].get("Largeur",None) == None or dico_rues[rue][troncon]["Largeur"] >= largeur_min_chaussee)
+                and (dico_rues[rue][troncon].get("Type_circulation",None) == None or dico_rues[rue][troncon]["Type_circulation"] not in type_eviter)
+                and (dico_rues[rue][troncon].get("Revetement_chaussee",None) == None or dico_rues[rue][troncon]["Revetement_chaussee"] not in revettements_eviter)):
+                    liste_adj.append((rue,troncon))
         for (rue,troncon) in liste_adj:
             if (rue,troncon) not in rues_adj_voiture.keys() :
                 if len(liste_adj) == 1 :
@@ -202,13 +239,18 @@ def charger_donnees_adj_voiture(dico_noeuds,dico_rues):
 
 def charger_donnees_adj_pied(dico_noeuds,dico_rues):
     largeur_min_trot = 0.5
+    revettements_eviter = ["Pavés","Végétation","Non revêtu"]
+    importance_eviter = ["Grand axe"]
     rues_adj_pied = {}
     for noeud in dico_noeuds:
         liste_adj = []
         for rue in dico_noeuds[noeud]:
             for troncon in dico_noeuds[noeud][rue]:
-                if (dico_rues[rue][troncon].get("Largeur_trottoir_D",None) != None) and (dico_rues[rue][troncon].get("Largeur_trottoir_G",None) != None):
-                    if(dico_rues[rue][troncon]["Largeur_trottoir_D"] >= largeur_min_trot) and (dico_rues[rue][troncon]["Largeur_trottoir_G"] >= largeur_min_trot):
+                if ((dico_rues[rue][troncon].get("Largeur_trottoir_D",None) == None or dico_rues[rue][troncon].get("Largeur_trottoir_G",None) == None 
+                or dico_rues[rue][troncon]["Largeur_trottoir_D"] >= largeur_min_trot or dico_rues[rue][troncon]["Largeur_trottoir_G"] >= largeur_min_trot) 
+                and (dico_rues[rue][troncon].get("Revetement_trottoir_D",None) == None or dico_rues[rue][troncon].get("Revetement_trottoir_G",None) == None 
+                or dico_rues[rue][troncon]["Revetement_trottoir_D"] not in revettements_eviter or dico_rues[rue][troncon]["Revetement_trottoir_G"] not in revettements_eviter)
+                and (dico_rues[rue][troncon].get("Importance",None) == None or dico_rues[rue][troncon]["Importance"] not in importance_eviter)):
                         liste_adj.append((rue,troncon))
         for (rue,troncon) in liste_adj:
             if (rue,troncon) not in rues_adj_pied.keys() :
@@ -223,7 +265,7 @@ def charger_donnees_adj_pied(dico_noeuds,dico_rues):
                 for i in liste_adj :
                     if i != (rue,troncon) and i not in rues_adj_pied[(rue,troncon)] :
                         rues_adj_pied[(rue,troncon)].append(i)
-    return rues_adj_pied  
+    return rues_adj_pied
              
 def charger_donnees_adresses():
     f_point_debouche = "point_debouche.geojson"
@@ -279,7 +321,8 @@ def charger_donnees_centre(dico_adresses_communes):
         dico_adresses_communes[commune]["centre"]={"0":co_centre}
     return dico_adresses_communes
 
-def give_troncon_nearest_gps(co_gps_user,dico_rues,choix_transport):
+
+def give_troncon_nearest_gps(co_gps_start, co_gps_end ,dico_rues,choix_transport):
     """Trouve le couple troncon + FUV le plus proche des coordonnées gps fournis par l'utilisateur
     Args:
         co_gps_user (tuple): coordonnées GPS (long,lat)
@@ -287,54 +330,98 @@ def give_troncon_nearest_gps(co_gps_user,dico_rues,choix_transport):
     Returns:
         dict: {(FUV,troncon) : [co_gps]}
     """
-    pente_max = 5
-    largeur_min_trot_poussette = 1.5
-    largeur_min_trot_pied = 0.5
-    largeur_min_chaussee = 2.5
-    d_min = 2e+7 #ici on va comparer les distance carré entre elles (et la distance maximale étant la circonsphérence de la terre)
-    id_rue_troncon = (0,0)
-    for fuv in dico_rues.keys():
-        for troncon in dico_rues[fuv].keys():
-            if choix_transport == 1 :
-                #velo
-                for co_gps in dico_rues[fuv][troncon]['GPS'] :
-                            d = dist_lat_lon_deg(co_gps[1],co_gps[0],co_gps_user[1],co_gps_user[0])
-                            if d < d_min :
-                                id_rue_troncon = (fuv,troncon)
-                                d_min = d
+    d_min_start = 2e+7 #ici on va comparer les distance carré entre elles (et la distance maximale étant la circonsphérence de la terre)
+    d_min_end = 2e+7 #ici on va comparer les distance carré entre elles (et la distance maximale étant la circonsphérence de la terre)
+    id_rue_troncon_start = (0,0)
+    id_rue_troncon_end = (0,0)
+    if choix_transport == 1 :
+        #velo
+        type_eviter = ["Escalier"]
+        revettements_eviter = ["Végétation","Non revêtu"]
+        importance_eviter = ["Grand axe"]
+        for fuv in dico_rues.keys():
+            for troncon in dico_rues[fuv].keys():
+                if ((dico_rues[fuv][troncon].get("Revetement_chaussee",None) == None or dico_rues[fuv][troncon]["Revetement_chaussee"] not in revettements_eviter)
+                and (dico_rues[fuv][troncon].get("Importance",None) == None or dico_rues[fuv][troncon]["Importance"] not in importance_eviter)
+                and (dico_rues[fuv][troncon].get("Type_circulation",None) == None or dico_rues[fuv][troncon]["Type_circulation"] not in type_eviter)):
+                    for co_gps in dico_rues[fuv][troncon]['GPS'] :
+                        d_start = dist_lat_lon_deg(co_gps[1],co_gps[0],co_gps_start[1],co_gps_start[0])
+                        d_end = dist_lat_lon_deg(co_gps[1],co_gps[0],co_gps_end[1],co_gps_end[0])
+                        if d_start < d_min_start :
+                            id_rue_troncon_start = (fuv,troncon)
+                            d_min_start = d_start
+                        if d_end < d_min_end :
+                            id_rue_troncon_end = (fuv,troncon)
+                            d_min_end = d_end
 
-            elif choix_transport == 2 :
-                #voiture
-                if (dico_rues[fuv][troncon].get("Largeur",None) != None):
-                    if (dico_rues[fuv][troncon]["Largeur"] >= largeur_min_chaussee):
-                        for co_gps in dico_rues[fuv][troncon]['GPS'] :
-                            d = dist_lat_lon_deg(co_gps[1],co_gps[0],co_gps_user[1],co_gps_user[0])
-                            if d < d_min :
-                                id_rue_troncon = (fuv,troncon)
-                                d_min = d
+    elif choix_transport == 2 :
+        #voiture
+        largeur_min_chaussee = 2.5
+        type_eviter = ["Escalier","Bus","Pietons"]
+        revettements_eviter = ["Végétation","Non revêtu"]
+        for fuv in dico_rues.keys():
+            for troncon in dico_rues[fuv].keys():
+                if ((dico_rues[fuv][troncon].get("Largeur",None) == None or dico_rues[fuv][troncon]["Largeur"] >= largeur_min_chaussee)
+                and (dico_rues[fuv][troncon].get("Type_circulation",None) == None or dico_rues[fuv][troncon]["Type_circulation"] not in type_eviter)
+                and (dico_rues[fuv][troncon].get("Revetement_chaussee",None) == None or dico_rues[fuv][troncon]["Revetement_chaussee"] not in revettements_eviter)):
+                    for co_gps in dico_rues[fuv][troncon]['GPS'] :
+                        d_start = dist_lat_lon_deg(co_gps[1],co_gps[0],co_gps_start[1],co_gps_start[0])
+                        d_end = dist_lat_lon_deg(co_gps[1],co_gps[0],co_gps_end[1],co_gps_end[0])
+                        if d_start < d_min_start :
+                            id_rue_troncon_start = (fuv,troncon)
+                            d_min_start = d_start
+                        if d_end < d_min_end :
+                            id_rue_troncon_end = (fuv,troncon)
+                            d_min_end = d_end
 
-            elif choix_transport == 3 :
-                # a pied
-                if (dico_rues[fuv][troncon].get("Largeur_trottoir_D",None) != None) and (dico_rues[fuv][troncon].get("Largeur_trottoir_G",None) != None):
-                    if(dico_rues[fuv][troncon]["Largeur_trottoir_D"] >= largeur_min_trot_pied) and (dico_rues[fuv][troncon]["Largeur_trottoir_G"] >= largeur_min_trot_pied):
-                        for co_gps in dico_rues[fuv][troncon]['GPS'] :
-                            d = dist_lat_lon_deg(co_gps[1],co_gps[0],co_gps_user[1],co_gps_user[0])
-                            if d < d_min :
-                                id_rue_troncon = (fuv,troncon)
-                                d_min = d
-            
-            else :
-                # par defaut poussette
-                if (dico_rues[fuv][troncon].get("Pente_max",None) != None) and (dico_rues[fuv][troncon].get("Largeur_trottoir_D",None) != None) and (dico_rues[fuv][troncon].get("Largeur_trottoir_G",None) != None):
-                    if (dico_rues[fuv][troncon]["Pente_max"] <= pente_max ) and (dico_rues[fuv][troncon]["Largeur_trottoir_D"] >= largeur_min_trot_poussette) and (dico_rues[fuv][troncon]["Largeur_trottoir_G"] >= largeur_min_trot_poussette):
-                        for co_gps in dico_rues[fuv][troncon]['GPS'] :
-                            d = dist_lat_lon_deg(co_gps[1],co_gps[0],co_gps_user[1],co_gps_user[0])
-                            if d < d_min :
-                                id_rue_troncon = (fuv,troncon)
-                                d_min = d
+    elif choix_transport == 3 :
+        # a pied
+        largeur_min_trot = 0.5
+        revettements_eviter = ["Pavés","Végétation","Non revêtu"]
+        importance_eviter = ["Grand axe"]
+        for fuv in dico_rues.keys():
+            for troncon in dico_rues[fuv].keys():
+                if ((dico_rues[fuv][troncon].get("Largeur_trottoir_D",None) == None or dico_rues[fuv][troncon].get("Largeur_trottoir_G",None) == None 
+                or dico_rues[fuv][troncon]["Largeur_trottoir_D"] >= largeur_min_trot or dico_rues[fuv][troncon]["Largeur_trottoir_G"] >= largeur_min_trot) 
+                and (dico_rues[fuv][troncon].get("Revetement_trottoir_D",None) == None or dico_rues[fuv][troncon].get("Revetement_trottoir_G",None) == None 
+                or dico_rues[fuv][troncon]["Revetement_trottoir_D"] not in revettements_eviter or dico_rues[fuv][troncon]["Revetement_trottoir_G"] not in revettements_eviter)
+                and (dico_rues[fuv][troncon].get("Importance",None) == None or dico_rues[fuv][troncon]["Importance"] not in importance_eviter)):
+                    for co_gps in dico_rues[fuv][troncon]['GPS'] :
+                        d_start = dist_lat_lon_deg(co_gps[1],co_gps[0],co_gps_start[1],co_gps_start[0])
+                        d_end = dist_lat_lon_deg(co_gps[1],co_gps[0],co_gps_end[1],co_gps_end[0])
+                        if d_start < d_min_start :
+                            id_rue_troncon_start = (fuv,troncon)
+                            d_min_start = d_start
+                        if d_end < d_min_end :
+                            id_rue_troncon_end = (fuv,troncon)
+                            d_min_end = d_end
 
-
-    return id_rue_troncon
+    else :
+        # par defaut poussette
+        pente_max = 8
+        pente_moy = 5
+        largeur_min_trot = 1.5
+        revettements_eviter = ["Pavés","Végétation","Non revêtu"]
+        importance_eviter = ["Grand axe"]
+        for fuv in dico_rues.keys():
+            for troncon in dico_rues[fuv].keys():
+                if ((dico_rues[fuv][troncon].get("Pente_max",None) == None or dico_rues[fuv][troncon]["Pente_max"] <= pente_max) 
+                and (dico_rues[fuv][troncon].get("Pente_moy",None) == None or dico_rues[fuv][troncon]["Pente_moy"] <= pente_moy)
+                and (dico_rues[fuv][troncon].get("Largeur_trottoir_D",None) == None or dico_rues[fuv][troncon].get("Largeur_trottoir_G",None) == None 
+                or dico_rues[fuv][troncon]["Largeur_trottoir_D"] >= largeur_min_trot or dico_rues[fuv][troncon]["Largeur_trottoir_G"] >= largeur_min_trot) 
+                and (dico_rues[fuv][troncon].get("Revetement_trottoir_D",None) == None or dico_rues[fuv][troncon].get("Revetement_trottoir_G",None) == None 
+                or dico_rues[fuv][troncon]["Revetement_trottoir_D"] not in revettements_eviter or dico_rues[fuv][troncon]["Revetement_trottoir_G"] not in revettements_eviter)
+                and (dico_rues[fuv][troncon].get("Importance",None) == None or dico_rues[fuv][troncon]["Importance"] not in importance_eviter)):
+                    for co_gps in dico_rues[fuv][troncon]['GPS'] :
+                        d_start = dist_lat_lon_deg(co_gps[1],co_gps[0],co_gps_start[1],co_gps_start[0])
+                        d_end = dist_lat_lon_deg(co_gps[1],co_gps[0],co_gps_end[1],co_gps_end[0])
+                        if d_start < d_min_start :
+                            id_rue_troncon_start = (fuv,troncon)
+                            d_min_start = d_start
+                        if d_end < d_min_end :
+                            id_rue_troncon_end = (fuv,troncon)
+                            d_min_end = d_end
+    return id_rue_troncon_start, id_rue_troncon_end
     
 def gestion_saisie(saisie_user, l_communes):
     liste_saisie = saisie_user.split(", ")
@@ -503,7 +590,7 @@ def dist_lat_lon_deg(start_lat,start_lon,end_lat,end_lon):
         distance = 6371000*math.acos(math.sin(math.radians(start_lat)) * math.sin(math.radians(end_lat)) + math.cos(math.radians(start_lon) - math.radians(end_lon)) * math.cos(math.radians(start_lat)) * math.cos(math.radians(end_lat)))
     return distance
 
-def a_star(start, goal, rues_adjacentes, dico_rues):
+def a_star(start, goal, rues_adjacentes, dico_rues, crit_sens, crit_vitesse):
     queue = PriorityQueue()  # Créer une file de priorité pour les noeuds à explorer
     queue.put((0, start))  # Ajouter le tuple (pondération, noeud) à la file 
     came_from = {}  # Créer un dictionnaire pour stocker les parents de chaque noeud exploré
@@ -516,25 +603,45 @@ def a_star(start, goal, rues_adjacentes, dico_rues):
     while not queue.empty() and not itinerary:
         current = queue.get()[1] #l'indice zéro est celui de priorité
         lat_lon_current = [dico_rues[current[0]][current[1]]['GPS'][0],dico_rues[current[0]][current[1]]['GPS'][-1]]
-        # print(current)
+        if crit_sens:
+            sens_current = dico_rues[current[0]][current[1]]["Sens_circulation"]
+        else:
+            sens_current = "Double"
+            
+        if sens_current == "Conforme":
+            lat_lon_current.pop(0)
+        elif sens_current == "Inverse":
+            lat_lon_current.pop(-1)
         # Récupérer le noeud avec la plus petite priorité dans la file
         if current == goal: 
             itinerary = True
         else:
-            for next_node in rues_adjacentes[current]:# On récupère le tuple coordonées des adj : (lat,lon)
-                new_cost = cost_so_far[current] + dico_rues[next_node[0]][next_node[1]]["Longueur"]  # Calculer le coût pour atteindre le voisin en passant par le noeud actuel
-                if next_node not in cost_so_far.keys() or new_cost < cost_so_far[next_node]:
-                    cost_so_far[next_node] = new_cost  # Mettre à jour le coût pour atteindre le voisin
-                    lat_lon_node = [dico_rues[next_node[0]][next_node[1]]['GPS'][0],dico_rues[next_node[0]][next_node[1]]['GPS'][-1]]
-                    if lat_lon_current[0] == lat_lon_node[0] or lat_lon_current[-1] == lat_lon_node[0]:
-                        co_end_node = lat_lon_node[-1]
+            for next_node in rues_adjacentes[current]:# On récupère le tuple coordonées des adj : (fuv,troncon)
+                lat_lon_node = [dico_rues[next_node[0]][next_node[1]]['GPS'][0],dico_rues[next_node[0]][next_node[1]]['GPS'][-1]]
+                if crit_sens:
+                    sens = dico_rues[next_node[0]][next_node[1]]["Sens_circulation"]
+                else:
+                    sens = "Double"
+                if (sens == "Conforme" and lat_lon_node[0] in lat_lon_current) or (sens == "Inverse" and lat_lon_node[-1] in lat_lon_current) or (sens=="Double"):
+                    if crit_vitesse:
+                        vitesse = int(dico_rues[next_node[0]][next_node[1]]["Limitation_vitesse"])
                     else:
-                        co_end_node = lat_lon_node[0]
-                    priority = new_cost + dist_lat_lon_deg(co_end_node[1],co_end_node[0],co_moy_goal[1],co_moy_goal[0])  # Calculer la priorité pour le voisin
-                    queue.put((priority, next_node))  # Ajouter le voisin à la file avec sa nouvelle priorité
-                    came_from[next_node] = current  # Stocker le noeud actuel comme parent du voisin exploré
-    # print(came_from, '\n\n')
-
+                        vitesse = 1
+                    new_cost = cost_so_far[current] + (dico_rues[next_node[0]][next_node[1]]["Longueur"]/vitesse)  # Calculer le coût pour atteindre le voisin en passant par le noeud actuel
+                    if next_node not in cost_so_far.keys() or new_cost < cost_so_far[next_node]:
+                        cost_so_far[next_node] = new_cost  # Mettre à jour le coût pour atteindre le voisin
+                        if lat_lon_current[0] == lat_lon_node[0] or lat_lon_current[-1] == lat_lon_node[0]:
+                            co_end_node = lat_lon_node[-1]
+                        else:
+                            co_end_node = lat_lon_node[0]
+                        if crit_vitesse:
+                            vitesse_max = 50
+                        else:
+                            vitesse_max = 1
+                        priority = new_cost + (dist_lat_lon_deg(co_end_node[1],co_end_node[0],co_moy_goal[1],co_moy_goal[0])/vitesse_max)  # Calculer la priorité pour le voisin
+                        queue.put((priority, next_node))  # Ajouter le voisin à la file avec sa nouvelle priorité
+                        came_from[next_node] = current  # Stocker le noeud actuel comme parent du voisin exploré
+                        
     # Pour avoir le parcourt du départ à l'arrivée
     if itinerary:
         path = [goal]
@@ -546,7 +653,7 @@ def a_star(start, goal, rues_adjacentes, dico_rues):
         path = []
         dist_path = 0
 
-    print ("Le chemin le plus court est : ", path,', Pour une distance de ', dist_path)
+    print ("Le chemin le plus court est : ", path,', Pour une distance de ', dist_path, 'mètres (sauf mode voiture)')
     return path, dist_path
 
 def compute_cross(fuv_tr_pre, fuv_tr_suiv, dico_rues, rues_adjacentes):
@@ -592,7 +699,7 @@ def compute_cross(fuv_tr_pre, fuv_tr_suiv, dico_rues, rues_adjacentes):
                     dico_fuv_tr_xy[categorie][troncon] = [xy_lat_long(co_gps[1],co_gps[0],co_gps_noeud[-1])]
                 else:
                     dico_fuv_tr_xy[categorie][troncon].append(xy_lat_long(co_gps[1],co_gps[0],co_gps_noeud[-1]))
-    return dico_fuv_tr_xy, co_gps_noeud[-1],co_gps_noeud[0]
+    return dico_fuv_tr_xy, co_gps_noeud[-1], co_gps_noeud[0]
 
 def xy_lat_long(latitude, longitude, latitude_ref):
     #on fait en sorte que la longitude soit comprise entre 0 et 360 et non entre -180 et 180
@@ -711,7 +818,7 @@ def instructions(dico_fuv_tr_carte, fuv_tr_pre, fuv_tr_suiv, dico_rues):
 def consigne_noeud(fuv_tr_pre, fuv_tr_suiv, dico_rues, rues_adjacentes):
     #Recherche des segments adjacents, compilation de leurs co GPS dans un dictionnaire
     #puis passage en co cartesienne
-    dico_fuv_tr_adj, lat_noeud,long_noeud = compute_cross(fuv_tr_pre, fuv_tr_suiv, dico_rues, rues_adjacentes)
+    dico_fuv_tr_adj, lat_noeud, long_noeud = compute_cross(fuv_tr_pre, fuv_tr_suiv, dico_rues, rues_adjacentes)
     #calcul des points qui seront visible et qu'il faut donc prendre en compte pour l'orientation 
     dist_min = calcul_dist_min(dico_fuv_tr_adj)
     i = 1
