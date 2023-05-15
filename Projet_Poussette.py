@@ -13,7 +13,11 @@ import Load_Files
 import tkintermapview
 
 class MainWindow():
+    """Classe associe à l'interface graphique
+    """
     def __init__(self) :
+        """constructeur de la classe
+        """
         ########################### Fenetre principale #########################
         # on initialise d'abord la fenetre principale sur un affichage de chargement, le temps que les donnees se chargent
         self.root = tk.Tk()
@@ -37,6 +41,8 @@ class MainWindow():
 
     ########################### Fenetre principale #########################
     def initWidget_load(self):
+        """Initialise les differents widgets de la fenetres de chargement
+        """
         
         self.root.geometry("300x200")
         self.loading_label_1 = tk.Label(self.root, text = "Chargement des données", font = "Calibri 16")
@@ -48,6 +54,8 @@ class MainWindow():
         self.root.title("Lyonyroule")
 
     def initWidget_main(self):
+        """intialise les widgets de l'interface graphique et même ceux qui seront affichés après (par un evenement utilisateur)
+        """
         self.loading_label_1.destroy()
         self.loading_label_2.destroy()
         self.progress_bar.destroy()
@@ -165,9 +173,17 @@ class MainWindow():
         self.frame_detail_etapes.pack_forget()
 
     def loop(self):
+        """boucle principale de l'application
+        """
         self.root.mainloop()
         
     def lancement_auto(self, event):
+        """fonction callback qui lance le défilement automatique du parcours sur l'interface détails
+
+
+        Args:
+            event (tk event): evenement utilisateur
+        """
         if (self.toplevel_parcour != None) :
             self.toplevel_parcour.focus_set()
         if self.button_automatique.config('bg')[-1] == 'gray':
@@ -189,6 +205,11 @@ class MainWindow():
 
 
     def maj_auto(self, val_vitesse):
+        """fonction change l'affichage de l'intersection automatiquement sur la fenetre détails
+
+        Args:
+            val_vitesse (float): valeur de la vitesse de changement définie par l'utilisateur sur un slidder
+        """
         if (self.toplevel_parcour != None) :
             self.toplevel_parcour.focus_set()
         if self.button_automatique.config('bg')[-1] == 'green':
@@ -421,6 +442,8 @@ class MainWindow():
             messagebox.showinfo("Itinéraire incomplet", "Adresse(s) de départ et/ou d'arrivée non renseignée(s) ou non reconnue(s). \nVeuillez compléter les champs manquants.")
            
     def show_large_map(self):
+        """Affiche la carte principale et le trajet à affectuer sur l'interface graphique
+        """
         co_trajet = []
         for fuv_rue in self.itineraire :
             co_gps_liste = self.dico_rues[fuv_rue[0]][fuv_rue[1]]['GPS']
@@ -445,6 +468,11 @@ class MainWindow():
         self.map_widget.set_path(co_trajet)
 
     def bouton_change_iti(self,event):
+        """Fonction callback appellée lorsque l'on clique sur le bouton pour changer d'itinéraire
+
+        Args:
+            event (tk event): l'evenement utilisateur
+        """
         msg_user = messagebox.askyesno("Changer d'itineraire ?","Voulez vous vraiment changer d'itinéraire ?\n Celui-ci sera perdu")
         if msg_user == True :
             if (self.toplevel_parcour != None) :
@@ -496,6 +524,8 @@ class MainWindow():
         self.show_iti(self.itineraire[self.etape],self.itineraire[self.etape+1])
 
     def load_all_datas(self):
+        """lance le chargement des données pendant la fenetre initiale de chargement
+        """
         self.dico_noeuds, self.dico_rues = Load_Files.charger_donnees_troncon()
         self.progress_bar['value'] = 19
         self.root.update_idletasks()
@@ -532,6 +562,8 @@ class MainWindow():
     ############################ Fenetre trajet ##########################
 
     def init_widget_parcour(self):
+        """Creer la fenetre associée à la carte en détail du trajet (carrefour par carrefour)
+        """
 
         self.toplevel_parcour.resizable(height = False, width = False) 
         self.toplevel_parcour.title = "Trajet"
@@ -564,6 +596,11 @@ class MainWindow():
         self.frame_bt.pack()
     
     def precedent(self, event):
+        """Fonction callback appellée lorsque l'on clique sur le bouton precedent
+
+        Args:
+            event (tk event): evenement utilisateur
+        """
         if self.etape > 0:
             self.main_canvas.delete(self.ligne_pre)
             self.main_canvas.delete(self.ligne_suiv)
@@ -581,6 +618,11 @@ class MainWindow():
             self.show_iti(self.itineraire[self.etape],self.itineraire[self.etape+1])
     
     def suivant(self, event):
+        """Fonction callback appellée par un clic sur le bouton suivant
+
+        Args:
+            event (tk event): evenement utilisateur
+        """
         self.etape += 1
         self.main_canvas.delete(self.ligne_pre)
         self.main_canvas.delete(self.ligne_suiv)
@@ -604,6 +646,12 @@ class MainWindow():
                 self.root.after_cancel(self.timer_id)
 
     def show_iti(self, fuv_tr_pre, fuv_tr_suiv):
+        """Affiche dans cette fenetre trajet, l'itineraire a suivre au carrefour actuel
+
+        Args:
+            fuv_tr_pre (tuple): indice du code (fuv,troncon) du carrefour précedent
+            fuv_tr_suiv (tuple): indice du code (fuv,troncon) du carrefour suivant
+        """
         if self.maker_noeud != None : 
             self.maker_noeud.delete()
         #Recherche des segments adjacents, compilation de leurs co GPS dans un dictionnaire
@@ -653,6 +701,16 @@ class MainWindow():
         self.map_widget.set_zoom(17)
         
     def dessine_noeud(self, dico_fuv_tr_carte, fuv_tr_pre, fuv_tr_suiv, co_nord, cote_echelle, echelle_choisie):
+        """Agence les différentes formes pour dessiner l'intersection actuelle avec la route à suivre
+
+        Args:
+            dico_fuv_tr_carte (dict): le dictionnaire des code fuv mis dans le bon sens pour le dessin
+            fuv_tr_pre (tuple): indice du code (fuv,troncon) pour le carrefour precedent
+            fuv_tr_suiv (tuple): indice du code (fuv,troncon) pour le carrefour suivant
+            co_nord (tuple): les coordonnées cartesienne de la direction du nord pour tracer la bousole
+            cote_echelle (float): taille de l'echelle du dessin
+            echelle_choisie (float): taille totale de l'echelle à afficher
+        """
         #on trace les eventuels chemins adjacents
         self.liste_ligne_adj =[]
         for troncon in dico_fuv_tr_carte["adjacents"]:
