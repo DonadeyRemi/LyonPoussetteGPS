@@ -10,7 +10,7 @@ import math
 from queue import PriorityQueue
 
 def charger_donnees_troncon():
-    """Charge des des dictionnaires les données du fichier relatif au troncons
+    """Charge des dictionnaires les données du fichier relatif au troncons
 
     Returns:
         dict: dico_noeud: les données des noeuds (carrefours)
@@ -60,12 +60,16 @@ def charger_donnees_troncon():
     return dico_noeuds, dico_rues
 
 def charger_donnees_chaussees(dico_noeuds, dico_rues):
-    """
-    Ajoute les données relatives au fichier chaussee et trotoirs
+    """Ajoute les données relatives au fichier chaussee et trotoirs
+
+    Args:
+        dico_noeuds (dict): dictionnaire contenant l'ensemble des noeuds du réseaux routier
+        dico_rues (dict): dictionnaire clé (fuv,troncon) avec l'ensemble des propriétés des routes
+
     Returns:
-        dict: dico_noeud: les données des noeuds (carrefours)
-        dict: dico_rue les données des code FUV
-    """           
+        dict:dico des noeuds
+        dict:dico des rues
+    """
     f_chaussees_geojson = "chaussees_trotoirs.geojson"
     arrondi_gps = 12
     with open(f_chaussees_geojson,encoding='utf-8') as fichier :
@@ -402,7 +406,7 @@ def charger_donnees_centre(dico_adresses_communes):
 
 
 def give_troncon_nearest_gps(co_gps_start, co_gps_end ,dico_rues,choix_transport):
-    """Trouve le couple troncon + FUV le plus proche des coordonnées gps fournis par l'utilisateur
+    """Trouve le couple troncon + FUV le plus proche des coordonnées gps fournis par l'utilisateur pour l'adresse de départ et d'arrivée
     Args:
         co_gps_user (tuple): coordonnées GPS (long,lat)
         dico_rues (dict): le dictionnaire contenant les paramètres pour chaques couples troncon+FUV
@@ -842,6 +846,16 @@ def compute_cross(fuv_tr_pre, fuv_tr_suiv, dico_rues, rues_adjacentes):
     return dico_fuv_tr_xy, co_gps_noeud[-1], co_gps_noeud[0]
 
 def xy_lat_long(latitude, longitude, latitude_ref):
+    """effectue le conversion de la latitude et de la longitude en coordonnées cartesienne
+
+    Args:
+        latitude (float): la latitude du point
+        longitude (float): la longitude du point
+        latitude_ref (float): la latitude de reférence du lieu
+
+    Returns:
+        list: les coordonnées cartesiennes du point
+    """
     #on fait en sorte que la longitude soit comprise entre 0 et 360 et non entre -180 et 180
     longitude = longitude + 180
     #on la rapporte de 0 à 2000
