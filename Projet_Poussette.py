@@ -13,10 +13,10 @@ import Load_Files
 import tkintermapview
 
 class MainWindow():
-    """Classe associe à l'interface graphique
+    """Classe associée à l'interface graphique
     """
     def __init__(self) :
-        """constructeur de la classe
+        """Constructeur de la classe
         """
         ########################### Fenetre principale #########################
         # on initialise d'abord la fenetre principale sur un affichage de chargement, le temps que les donnees se chargent
@@ -41,7 +41,7 @@ class MainWindow():
 
     ########################### Fenetre principale #########################
     def initWidget_load(self):
-        """Initialise les differents widgets de la fenetres de chargement
+        """Initialise les différents widgets, la taille et le titre de la fenêtre de chargement
         """
         
         self.root.geometry("300x200")
@@ -54,7 +54,8 @@ class MainWindow():
         self.root.title("Lyonyroule")
 
     def initWidget_main(self):
-        """intialise les widgets de l'interface graphique et même ceux qui seront affichés après (par un evenement utilisateur)
+        """Intialise les widgets des différentes frames de l'interface graphique,
+        même celles qui seront affichées après (par un evénement utilisateur)
         """
         self.loading_label_1.destroy()
         self.loading_label_2.destroy()
@@ -161,6 +162,7 @@ class MainWindow():
         self.scale_vitesse = tk.Scale(self.frame_trajet, orient='horizontal', from_= 10, to=100, showvalue = 0, resolution=2, tickinterval=10, length=200, variable = self.vitesse, font=("Calibri", 8), label = "Vitesse lecture auto (%)", command = self.maj_auto)
         self.scale_vitesse.pack(side=tk.TOP,fill=tk.X)
         
+        #sous-frame qui contient les widgets des étapes du trajet
         self.frame_detail_etapes = ScrolledFrame(self.root, width = 150)
         self.frame_detail_etapes.pack()
         self.frame_detail_etapes.bind_scroll_wheel(self.root)
@@ -173,85 +175,53 @@ class MainWindow():
         self.frame_detail_etapes.pack_forget()
 
     def loop(self):
-        """boucle principale de l'application
+        """Boucle principale de l'application
         """
         self.root.mainloop()
         
-    def lancement_auto(self, event):
-        """fonction callback qui lance le défilement automatique du parcours sur l'interface détails
-
-
-        Args:
-            event (tk event): evenement utilisateur
+    def load_all_datas(self):
+        """Effectue le chargement des données, met à jour la barre de chargement
+        puis appelle l'affichage principal
+        (fonction déclenchée après l'affichage de la fenêtre de chargement)
         """
-        if (self.toplevel_parcour != None) :
-            self.toplevel_parcour.focus_set()
-        if self.button_automatique.config('bg')[-1] == 'gray':
-            self.button_automatique.config(bg='green')
-            if (self.toplevel_parcour == None) :
-                self.etape = 0
-                self.toplevel_parcour = tk.Toplevel(self.root)
-                self.init_widget_parcour()
-                self.show_iti(self.itineraire[self.etape],self.itineraire[self.etape+1])
-                self.temps_pause = int(1000/(self.vitesse.get()/100))
-                self.time_mem = int(time.time()*1000)
-                self.timer_id = self.root.after(self.temps_pause, self.automatique)
-            else :
-                self.timer_id = self.root.after(10, self.automatique)
-
-        else:
-            self.button_automatique.config(bg='gray')
-            self.root.after_cancel(self.timer_id)
-
-
-    def maj_auto(self, val_vitesse):
-        """fonction change l'affichage de l'intersection automatiquement sur la fenetre détails
-
-        Args:
-            val_vitesse (float): valeur de la vitesse de changement définie par l'utilisateur sur un slidder
-        """
-        if (self.toplevel_parcour != None) :
-            self.toplevel_parcour.focus_set()
-        if self.button_automatique.config('bg')[-1] == 'green':
-            time_now = int(time.time()*1000)
-            delai = time_now-self.time_mem
-            self.temps_pause = int(1000/(int(val_vitesse)/100))
-            if delai < self.temps_pause:
-                self.root.after_cancel(self.timer_id)
-                self.timer_id = self.root.after((self.temps_pause - delai), self.automatique)            
-            else:
-                self.root.after_cancel(self.timer_id)
-                self.timer_id = self.root.after(10, self.automatique)
-
-    def automatique(self):
-        """Efface et retrace automatiquement le carrefour suivant sur la fenetre détail du trajet
-        """
-        if self.etape + 2 < len(self.itineraire):
-            self.etape += 1
-            self.temps_pause = int(1000/(self.vitesse.get()/100))
-
-            self.main_canvas.delete(self.ligne_suiv)
-            self.main_canvas.delete(self.ligne_pre)
-            self.main_canvas.delete(self.rond_noeud)
-            self.main_canvas.delete(self.ligne_nord)
-            self.main_canvas.delete(self.texte_nord)
-            self.main_canvas.delete(self.rect_nord)
-            self.main_canvas.delete(self.rect_echelle)
-            self.main_canvas.delete(self.text_echelle)
-            for ligne in self.liste_ligne_adj :
-                self.main_canvas.delete(ligne)
-            for rect in self.liste_rect_echelle :
-                self.main_canvas.delete(rect)
-            self.show_iti(self.itineraire[self.etape],self.itineraire[self.etape+1])
-            self.time_mem = int(time.time()*1000)
-            self.root.after_cancel(self.timer_id)
-            self.timer_id = self.root.after(self.temps_pause, self.automatique)
-        else:
-            self.root.after_cancel(self.timer_id)
-            self.button_automatique.config(bg='gray')
+        self.dico_noeuds, self.dico_rues = Load_Files.charger_donnees_troncon()
+        self.progress_bar['value'] = 19
+        self.root.update_idletasks()
+        self.dico_noeuds, self.dico_rues = Load_Files.charger_donnees_chausses(self.dico_noeuds, self.dico_rues)
+        self.progress_bar['value'] = 37
+        self.root.update_idletasks()
+        self.dico_noeuds = Load_Files.correction_dico_noeuds(self.dico_noeuds)
+        self.progress_bar['value'] = 44
+        self.root.update_idletasks()
+        self.carrefour_adjacences = Load_Files.charger_donnees_adj(self.dico_noeuds)
+        self.progress_bar['value'] = 51
+        self.root.update_idletasks()
+        self.carrefour_adjacences_poussette = Load_Files.charger_donnees_adj_poussette(self.dico_noeuds,self.dico_rues)
+        self.progress_bar['value'] = 58
+        self.root.update_idletasks()
+        self.carrefour_adjacences_velo = Load_Files.charger_donnees_adj_velo(self.dico_noeuds,self.dico_rues)
+        self.progress_bar['value'] = 65
+        self.root.update_idletasks()
+        self.carrefour_adjacences_voiture = Load_Files.charger_donnees_adj_voiture(self.dico_noeuds,self.dico_rues)
+        self.progress_bar['value'] = 73
+        self.root.update_idletasks()
+        self.carrefour_adjacences_pied = Load_Files.charger_donnees_adj_pied(self.dico_noeuds,self.dico_rues)
+        self.progress_bar['value'] = 80
+        self.root.update_idletasks()
+        self.dico_adresses_num, self.dico_adresses_rues, self.dico_adresses_communes = Load_Files.charger_donnees_adresses()
+        self.progress_bar['value'] = 96
+        self.root.update_idletasks()
+        self.dico_adresses_communes = Load_Files.charger_donnees_centre(self.dico_adresses_communes)
+        self.progress_bar['value'] = 100
+        self.root.update_idletasks()
+        #une fois le chargement de donnees effectue, on met a jour l'affichage pour afficher le menu d'acceuil
+        self.root.after(500,self.initWidget_main) 
 
     def get_entry_start(self, event):
-        """Fonction callback sur le champs d'entree associee a l'adresse de depart
+        """Fonction callback sur le champs d'entrée associé à l'adresse de départ
+        (fonction déclenchée avec n'importe quelle touche du clavier dans la combobox de départ)
+        Découpe la saisie en éléments d'adresse (numéro, rue, ...), identifie une liste d'adresses correspondantes,
+        et met à jour les propositions de la combobox avec cette liste
 
         Args:
             event (tk event): l'evenement utilisateur
@@ -264,11 +234,15 @@ class MainWindow():
         self.start_selection.configure(foreground = "red")
         self.start_select_state = False
         self.depart = [None,None]
+        # si il y a une seule proposition => descendre la liste combobox
         if len(self.liste_depart) == 1 and len(event.widget.get()) > 1:
             self.start_selection.event_generate('<Down>',when="tail")
     
     def down_start(self, event):
-        """Fonction callback appellee lorsque l'on cherche à dérouler la combobox pour proposer les choix de l'adresse de depart
+        """Fonction callback sur le champs d'entrée associé à l'adresse de départ
+        (fonction déclenchée avec la touche Return du clavier dans la combobox de départ)
+        Met à jour la liste de propositions de la combobox de la même façon que get_entry_start(self, event)
+        et descend la liste de la combobox
 
         Args:
             event (tk event): l'evenement utilisateur
@@ -281,7 +255,11 @@ class MainWindow():
         self.start_selection.event_generate('<Down>',when="tail")
      
     def choose_start(self, event):
-        """Fonction callback appellee lorsque l'on clique sur un choix proposée dans la combobox de depart
+        """Fonction callback sur le champs d'entrée associé à l'adresse de départ
+        (fonction déclenchée par la selection d'une proposition dans la liste de la combobox de départ)
+        Redécoupe la valeur du champs de la combobox en éléments d'adresse (numéro, rue, ...)
+        et identifie l'adresse correspondante pour trouver ses coordonnées GPS
+        puis appelle l'identification du tuple (code_fuv,code_troncon) avec ces coordonnées GPS
 
         Args:
             event (tk event): evenement utilisateur
@@ -324,7 +302,9 @@ class MainWindow():
         self.root.after(100, self.recup_fuv_troncon)
 
     def effacer_start(self,event):
-        """Fonction callback appellee lorsquel'on cherche à écrire dans le champ d'entree de l'adresse de depart pour effacer le choix précédent
+        """Fonction callback sur le champs d'entrée associé à l'adresse de départ
+        (fonction déclenchée par le clic du bouton gauche sur la combobox de départ)
+        Efface le texte indicatif "Départ" pour permettre la saisie de l'utilisateur
 
         Args:
             event (tk event): evenement utilisateur
@@ -333,7 +313,9 @@ class MainWindow():
             self.start_selection.set("")
             
     def ecrire_start(self,event):
-        """fonction callback pour ecrire dans le champ d'entrée de l'adresse de depart l'adresse choisie
+        """Fonction callback sur le champs d'entrée associé à l'adresse de départ
+        (fonction déclenchée par la sortie du "focus" de la combobox de départ)
+        Remet le texte indicatif "Départ" en l'absence de saisie utilisateur
 
         Args:
             event (tk event): evenement utilisateur
@@ -346,8 +328,11 @@ class MainWindow():
             self.start_select_state = False
             
     def get_entry_end(self, event):
-        """Fonction callback sur le champs d'entree associee a l'adresse d'arrivée
-
+        """Fonction callback sur le champs d'entrée associé à l'adresse d'arrivée
+        (fonction déclenchée avec n'importe quelle touche du clavier dans la combobox d'arrivée')
+        Découpe la saisie en éléments d'adresse (numéro, rue, ...), identifie une liste d'adresses correspondantes,
+        et met à jour les propositions de la combobox avec cette liste
+        
         Args:
             event (tk event): l'evenement utilisateur
         """
@@ -363,8 +348,11 @@ class MainWindow():
             self.end_selection.event_generate('<Down>',when="tail")
     
     def down_end(self, event):
-        """Fonction callback appellee lorsque l'on cherche à dérouler la combobox pour proposer les choix de l'adresse d'arrivee
-
+        """Fonction callback sur le champs d'entrée associé à l'adresse d'arrivée
+        (fonction déclenchée avec la touche Return du clavier dans la combobox de d'arrivée)
+        Met à jour la liste de propositions de la combobox de la même façon que get_entry_end(self, event)
+        et descend la liste de la combobox
+        
         Args:
             event (tk event): l'evenement utilisateur
         """
@@ -376,8 +364,12 @@ class MainWindow():
         self.end_selection.event_generate('<Down>',when="tail")
     
     def choose_end(self, event):
-        """Fonction callback appellee lorsque l'on clique sur un choix proposée dans la combobox d'arrivee
-
+        """Fonction callback sur le champs d'entrée associé à l'adresse de départ
+        (fonction déclenchée par la selection d'une proposition dans la liste de la combobox de départ)
+        Redécoupe la valeur du champs de la combobox en éléments d'adresse (numéro, rue, ...)
+        et identifie l'adresse correspondante pour trouver ses coordonnées GPS
+        puis appelle l'identification du tuple (code_fuv,code_troncon) avec ces coordonnées GPS
+        
         Args:
             event (tk event): evenement utilisateur
         """
@@ -420,8 +412,10 @@ class MainWindow():
         self.root.after(100, self.recup_fuv_troncon)
     
     def effacer_end(self,event):
-        """Fonction callback appellee lorsquel'on cherche à écrire dans le champ d'entree de l'adresse d'arrivee pour effacer le choix précédent
-
+        """Fonction callback sur le champs d'entrée associé à l'adresse d'arrivée
+        (fonction déclenchée par le clic du bouton gauche sur la combobox d'arrivée)
+        Efface le texte indicatif "Arrivée" pour permettre la saisie de l'utilisateur
+        
         Args:
             event (tk event): evenement utilisateur
         """
@@ -429,8 +423,10 @@ class MainWindow():
             self.end_selection.set("")
             
     def ecrire_end(self,event):
-        """fonction callback pour ecrire dans le champ d'entrée de l'adresse d'arrivee l'adresse choisie
-
+        """Fonction callback sur le champs d'entrée associé à l'adresse d'arrivée
+        (fonction déclenchée par la sortie du "focus" de la combobox d'arrivée)
+        Remet le texte indicatif "Arrivée" en l'absence de saisie utilisateur
+        
         Args:
             event (tk event): evenement utilisateur
         """
@@ -442,15 +438,21 @@ class MainWindow():
             self.end_select_state = False
 
     def recup_fuv_troncon(self):
-        """Recupère le code fuv,troncon en fonction des coordonnee gps du point actuel
+        """Identifie en fonction des coordonnées GPS le tuple (code_fuv,code_troncon) de départ et celui d'arrivée
+        Ces tuples indentifient les troncons de manière unique
         """
         if self.start_select_state and self.end_select_state :
             self.depart_fuv, self.arrivee_fuv = Load_Files.give_troncon_nearest_gps(self.depart, self.arrivee, self.dico_rues, self.choice_vehicule.get())
 
     def start_research(self,event):
-        """Fonction callback du bouton de calcul de l'itineraire, il lance la recherche de l'itineraire
+        """Fonction callback du bouton de calcul de l'itinéraire
+        Lance la recherche de l'itinéraire en fonction du mode de recherche choisi par l'utilisateur
+        et génère le changement de frame, le calcul et l'affichage des étapes,
+        et l'affichage de l'itinéraire sur la carte si un trajet est trouvé
+        Retourne à l'utilisateur un message d'erreur sinon
+        
         Args:
-            event (dict): the tk event object return after the user event
+            event (tk event): evenement utilisateur
         """
         crit_sens = False
         crit_vitesse = False
@@ -494,9 +496,9 @@ class MainWindow():
                 messagebox.showinfo("Itinéraire Non trouvé", "Aucun itinéraires n'existent avec les paramètres selectionnés.")
         else :
             messagebox.showinfo("Itinéraire incomplet", "Adresse(s) de départ et/ou d'arrivée non renseignée(s) ou non reconnue(s). \nVeuillez compléter les champs manquants.")
-           
+    
     def show_large_map(self):
-        """Affiche la carte principale et le trajet à affectuer sur l'interface graphique
+        """Affiche le trajet à affectuer et les marqueurs de départ et d'arrivée sur l'interface graphique
         """
         co_trajet = []
         for fuv_rue in self.itineraire :
@@ -513,22 +515,24 @@ class MainWindow():
                     co_gps_liste.reverse()
                 for co_gps in co_gps_liste :
                     co_trajet.append((co_gps[1],co_gps[0]))
-
         #ajout d'un marker au debut et fin
-        marker_debut = self.map_widget.set_marker(co_trajet[0][0],co_trajet[0][1],text="Départ")
-        marker_fin = self.map_widget.set_marker(co_trajet[-1][0],co_trajet[-1][1],text="Arrivée")
-        marker_ad_debut = self.map_widget.set_marker(self.depart[-1],self.depart[0],text=f"Adresse\nDépart")
-        marker_ad_fin = self.map_widget.set_marker(self.arrivee[-1],self.arrivee[0],text=f"Adresse\nArrivée")
+        self.map_widget.set_marker(co_trajet[0][0],co_trajet[0][1],text="Départ")
+        self.map_widget.set_marker(co_trajet[-1][0],co_trajet[-1][1],text="Arrivée")
+        self.map_widget.set_marker(self.depart[-1],self.depart[0],text="Adresse\nDépart")
+        self.map_widget.set_marker(self.arrivee[-1],self.arrivee[0],text="Adresse\nArrivée")
         self.map_widget.set_path(co_trajet)
 
     def bouton_change_iti(self,event):
-        """Fonction callback appellée lorsque l'on clique sur le bouton pour changer d'itinéraire
+        """Fonction callback du bouton de changement d'itinéraire
+        Demande confirmation à l'utilisateur et repasse à la frame d'acceuil dans le cas positif
+        Supprime aussi dans ce cas les éléments associé au trajet en cours (tracé sur la carte, fenêtre trajet, ...)
 
         Args:
             event (tk event): l'evenement utilisateur
         """
         msg_user = messagebox.askyesno("Changer d'itineraire ?","Voulez vous vraiment changer d'itinéraire ?\n Celui-ci sera perdu")
         if msg_user == True :
+            # on ferme la fenetre trajet si elle est ouverte
             if (self.toplevel_parcour != None) :
                 self.toplevel_parcour.destroy()
                 if self.button_automatique.config('bg')[-1] == 'green':
@@ -540,7 +544,6 @@ class MainWindow():
             self.frame_trajet.pack_forget()
             self.frame_detail_etapes.pack_forget()
             self.frame_princ.pack(fill=tk.Y)
-            
             # on enleve le trajet actuel
             self.map_widget.delete_all_path()
             self.map_widget.delete_all_marker()
@@ -548,9 +551,12 @@ class MainWindow():
             self.map_widget.set_zoom(11)
         
     def open_window_trajet(self,event):
-        """Fonction callback du bouton commencer le trajet, ouvre la fenetre du trajet carrefour par carrefour
+        """Fonction callback du bouton commencer le trajet
+        Ouvre la fenetre trajet qui affiche l'itinéraire carrefour par carrefour
+        Affiche le premier carrefour
+        
         Args:
-            event (dict): the tk event object return after the user event 
+            event (tk event): l'evenement utilisateur 
         """
         self.etape = 0
         if (self.toplevel_parcour != None) :
@@ -563,9 +569,12 @@ class MainWindow():
         self.show_iti(self.itineraire[self.etape],self.itineraire[self.etape+1])
         
     def open_window_trajet_middle(self, idx):
-        """Fonction callback du bouton commencer le trajet, ouvre la fenetre du trajet carrefour par carrefour
+        """Fonction pseudo-callback des boutons étapes de l'itinéraire
+        Ouvre la fenetre trajet qui affiche l'itinéraire carrefour par carrefour
+        Affiche le carrefour rattaché au bouton cliqué
+        
         Args:
-        event (dict): the tk event object return after the user event 
+            idx (int): numéro de l'étape associé au bouton
         """
         self.etape = idx
         if (self.toplevel_parcour != None) :
@@ -576,47 +585,88 @@ class MainWindow():
         self.toplevel_parcour = tk.Toplevel(self.root)
         self.init_widget_parcour()
         self.show_iti(self.itineraire[self.etape],self.itineraire[self.etape+1])
+        
+    def lancement_auto(self, event):
+        """Fonction callback du bouton de lecture automatique
+        Déclenche le défilement automatique des étapes du parcours (carrefours successifs) sur la fenêtre trajet
 
-    def load_all_datas(self):
-        """lance le chargement des données pendant la fenetre initiale de chargement
+        Args:
+            event (tk event): evenement utilisateur
         """
-        self.dico_noeuds, self.dico_rues = Load_Files.charger_donnees_troncon()
-        self.progress_bar['value'] = 19
-        self.root.update_idletasks()
-        self.dico_noeuds, self.dico_rues = Load_Files.charger_donnees_chausses(self.dico_noeuds, self.dico_rues)
-        self.progress_bar['value'] = 37
-        self.root.update_idletasks()
-        self.dico_noeuds = Load_Files.correction_dico_noeuds(self.dico_noeuds)
-        self.progress_bar['value'] = 44
-        self.root.update_idletasks()
-        self.carrefour_adjacences = Load_Files.charger_donnees_adj(self.dico_noeuds)
-        self.progress_bar['value'] = 51
-        self.root.update_idletasks()
-        self.carrefour_adjacences_poussette = Load_Files.charger_donnees_adj_poussette(self.dico_noeuds,self.dico_rues)
-        self.progress_bar['value'] = 58
-        self.root.update_idletasks()
-        self.carrefour_adjacences_velo = Load_Files.charger_donnees_adj_velo(self.dico_noeuds,self.dico_rues)
-        self.progress_bar['value'] = 65
-        self.root.update_idletasks()
-        self.carrefour_adjacences_voiture = Load_Files.charger_donnees_adj_voiture(self.dico_noeuds,self.dico_rues)
-        self.progress_bar['value'] = 73
-        self.root.update_idletasks()
-        self.carrefour_adjacences_pied = Load_Files.charger_donnees_adj_pied(self.dico_noeuds,self.dico_rues)
-        self.progress_bar['value'] = 80
-        self.root.update_idletasks()
-        self.dico_adresses_num, self.dico_adresses_rues, self.dico_adresses_communes = Load_Files.charger_donnees_adresses()
-        self.progress_bar['value'] = 96
-        self.root.update_idletasks()
-        self.dico_adresses_communes = Load_Files.charger_donnees_centre(self.dico_adresses_communes)
-        self.progress_bar['value'] = 100
-        self.root.update_idletasks()
-        #une fois le chargement de donnees effectue, on met a jour l'affichage pour afficher le menu d'acceuil
-        self.root.after(500,self.initWidget_main)    
+        if (self.toplevel_parcour != None) :
+            self.toplevel_parcour.focus_set()
+        if self.button_automatique.config('bg')[-1] == 'gray':
+            self.button_automatique.config(bg='green')
+            if (self.toplevel_parcour == None) :
+                self.etape = 0
+                self.toplevel_parcour = tk.Toplevel(self.root)
+                self.init_widget_parcour()
+                self.show_iti(self.itineraire[self.etape],self.itineraire[self.etape+1])
+                self.temps_pause = int(1000/(self.vitesse.get()/100))
+                self.time_mem = int(time.time()*1000)
+                self.timer_id = self.root.after(self.temps_pause, self.automatique)
+            else :
+                self.timer_id = self.root.after(10, self.automatique)
+
+        else:
+            self.button_automatique.config(bg='gray')
+            self.root.after_cancel(self.timer_id)
+
+
+    def maj_auto(self, val_vitesse):
+        """Fonction pseudo-callback du slider de selection de la vitesse de lecture
+        Calcul le délai écoulé depuis l'affichage automatique de la dernière étape
+        et passe à l'étape suivante si ce delai est plus long que celui lié à la nouvelle vitesse selectionnée par le slider
+
+        Args:
+            val_vitesse (float): valeur de la vitesse de lecture définie par l'utilisateur sur le slidder
+        """
+        if (self.toplevel_parcour != None) :
+            self.toplevel_parcour.focus_set()
+        if self.button_automatique.config('bg')[-1] == 'green':
+            time_now = int(time.time()*1000)
+            delai = time_now-self.time_mem
+            self.temps_pause = int(1000/(int(val_vitesse)/100))
+            if delai < self.temps_pause:
+                self.root.after_cancel(self.timer_id)
+                self.timer_id = self.root.after((self.temps_pause - delai), self.automatique)            
+            else:
+                self.root.after_cancel(self.timer_id)
+                self.timer_id = self.root.after(10, self.automatique)
+
+    def automatique(self):
+        """Gère le défilement automatique des étapes du parcours (carrefours successifs) sur la fenêtre trajet
+        Efface le carrefour dessiné et retrace automatiquement le carrefour suivant sur la fenêtre trajet
+        puis s'appelle de nouveau après un delai lié à la vitesse définie par le slider
+        """
+        if self.etape + 2 < len(self.itineraire):
+            self.etape += 1
+            self.temps_pause = int(1000/(self.vitesse.get()/100))
+
+            self.main_canvas.delete(self.ligne_suiv)
+            self.main_canvas.delete(self.ligne_pre)
+            self.main_canvas.delete(self.rond_noeud)
+            self.main_canvas.delete(self.ligne_nord)
+            self.main_canvas.delete(self.texte_nord)
+            self.main_canvas.delete(self.rect_nord)
+            self.main_canvas.delete(self.rect_echelle)
+            self.main_canvas.delete(self.text_echelle)
+            for ligne in self.liste_ligne_adj :
+                self.main_canvas.delete(ligne)
+            for rect in self.liste_rect_echelle :
+                self.main_canvas.delete(rect)
+            self.show_iti(self.itineraire[self.etape],self.itineraire[self.etape+1])
+            self.time_mem = int(time.time()*1000)
+            self.root.after_cancel(self.timer_id)
+            self.timer_id = self.root.after(self.temps_pause, self.automatique)
+        else:
+            self.root.after_cancel(self.timer_id)
+            self.button_automatique.config(bg='gray')   
 
     ############################ Fenetre trajet ##########################
 
     def init_widget_parcour(self):
-        """Creer la fenetre associée à la carte en détail du trajet (carrefour par carrefour)
+        """Intialise les widgets de la fenêtre trajet (affichage graphique)
         """
 
         self.toplevel_parcour.resizable(height = False, width = False) 
@@ -650,7 +700,8 @@ class MainWindow():
         self.frame_bt.pack()
     
     def precedent(self, event):
-        """Fonction callback appellée lorsque l'on clique sur le bouton precedent
+        """Fonction callback du bouton précédent
+        Efface le carrefour dessiné et retrace le carrefour précédent sur la fenêtre trajet
 
         Args:
             event (tk event): evenement utilisateur
@@ -672,7 +723,9 @@ class MainWindow():
             self.show_iti(self.itineraire[self.etape],self.itineraire[self.etape+1])
     
     def suivant(self, event):
-        """Fonction callback appellée par un clic sur le bouton suivant
+        """Fonction callback du bouton suivant
+        Efface le carrefour dessiné et retrace le carrefour suivant sur la fenêtre trajet
+        et ferme la fenêtre trajet si on est au dela de la dernière étape
 
         Args:
             event (tk event): evenement utilisateur
@@ -700,11 +753,12 @@ class MainWindow():
                 self.root.after_cancel(self.timer_id)
 
     def show_iti(self, fuv_tr_pre, fuv_tr_suiv):
-        """Affiche dans cette fenetre trajet, l'itineraire a suivre au carrefour actuel
+        """Affiche dans la fenêtre trajet, l'itineraire à suivre au carrefour renseigné
+        et centre l'affichage de la carte de la fenêtre principale sur ce carrefour
 
         Args:
-            fuv_tr_pre (tuple): indice du code (fuv,troncon) du carrefour précedent
-            fuv_tr_suiv (tuple): indice du code (fuv,troncon) du carrefour suivant
+            fuv_tr_pre (tuple): identifiant (fuv,troncon) du troncon précedent
+            fuv_tr_suiv (tuple): identifiant (fuv,troncon) du troncon suivant
         """
         if self.maker_noeud != None : 
             self.maker_noeud.delete()
@@ -755,15 +809,15 @@ class MainWindow():
         self.map_widget.set_zoom(17)
         
     def dessine_noeud(self, dico_fuv_tr_carte, fuv_tr_pre, fuv_tr_suiv, co_nord, cote_echelle, echelle_choisie):
-        """Agence les différentes formes pour dessiner l'intersection actuelle avec la route à suivre
+        """Dessine l'intersection renseignée avec la route à suivre, les indications, une boussole et une echelle
 
         Args:
-            dico_fuv_tr_carte (dict): le dictionnaire des code fuv mis dans le bon sens pour le dessin
-            fuv_tr_pre (tuple): indice du code (fuv,troncon) pour le carrefour precedent
-            fuv_tr_suiv (tuple): indice du code (fuv,troncon) pour le carrefour suivant
-            co_nord (tuple): les coordonnées cartesienne de la direction du nord pour tracer la bousole
-            cote_echelle (float): taille de l'echelle du dessin
-            echelle_choisie (float): taille totale de l'echelle à afficher
+            dico_fuv_tr_carte (dict): le dictionnaire des code (fuv,troncon) avec leurs coordonnées mises dans le bon sens et dans le bon repère pour le dessin
+            fuv_tr_pre (tuple): identifiant (fuv,troncon) du troncon precedent
+            fuv_tr_suiv (tuple): identifiant (fuv,troncon) du troncon suivant
+            co_nord (list): les coordonnées cartesienne (dans le bon sens et repère) de la direction du nord pour tracer la bousole
+            cote_echelle (float): valeur permettant le tracé de la barre d'échelle, à la bonne échelle
+            echelle_choisie (float): valeur de l'échelle à afficher
         """
         #on trace les eventuels chemins adjacents
         self.liste_ligne_adj =[]

@@ -10,11 +10,12 @@ import math
 from queue import PriorityQueue
 
 def charger_donnees_troncon():
-    """Charge des dictionnaires les données du fichier relatif au troncons
+    """Ouvre le dictionnaire de données du Grand Lyon relatif aux troncons
+    et utilise les données pour créer un dictionnaires des troncons avec leurs caractéristiques et un dictionnaires des noeuds 
 
     Returns:
-        dict: dico_noeud: les données des noeuds (carrefours)
-        dict: dico_rue les données des code FUV
+        dict: les données des noeuds (carrefours)
+        dict: les données des troncons
     """
     f_troncons_geojson = "troncon_trame_viaire.geojson"
     arrondi_gps = 12
@@ -60,16 +61,17 @@ def charger_donnees_troncon():
     return dico_noeuds, dico_rues
 
 def charger_donnees_chaussees(dico_noeuds, dico_rues):
-    """Ajoute les données relatives au fichier chaussee et trotoirs
-
+    """Ouvre le dictionnaire de données du Grand Lyon relatif aux chaussées et trotoirs
+    et complète les dictionnaires créés par charger_donnees_troncon() avec les données du fichier ouvert
+    
     Args:
-        dico_noeuds (dict): dictionnaire contenant l'ensemble des noeuds du réseaux routier
-        dico_rues (dict): dictionnaire clé (fuv,troncon) avec l'ensemble des propriétés des routes
-
+        dico_noeud (dict): les données des noeuds (carrefours)
+        dico_rue (dict): les données des troncons
+        
     Returns:
-        dict:dico des noeuds
-        dict:dico des rues
-    """
+        dict: les données des noeuds (carrefours)
+        dict: les données des troncons
+    """           
     f_chaussees_geojson = "chaussees_trotoirs.geojson"
     arrondi_gps = 12
     with open(f_chaussees_geojson,encoding='utf-8') as fichier :
@@ -131,13 +133,14 @@ def charger_donnees_chaussees(dico_noeuds, dico_rues):
     return dico_noeuds, dico_rues
     
 def correction_dico_noeuds(dico_noeuds):
-    """Ajuste le dictionnaire des noeuds pour enlever les doublons inutiles
+    """Ajuste le dictionnaire des noeuds pour enlever les noeuds qui ne sont pas des carrefours
+    (noeuds qui sont reliés à moins de 2 troncons)
 
     Args:
-        dico_noeuds (dict): le dictionnaire noeuds (carrefours)
+        dico_noeuds (dict): le dictionnaire des noeuds (carrefours)
 
     Returns:
-        dict: dico_noeuds
+        dict: le dictionnaire des noeuds (carrefours)
     """
     a_supprimer = []
     for tuple_gps in dico_noeuds:
@@ -150,10 +153,10 @@ def correction_dico_noeuds(dico_noeuds):
     return dico_noeuds
     
 def charger_donnees_adj(dico_noeuds):
-    """Creation du dictionnaire d'adjacence
+    """Crée le dictionnaire d'adjacence des troncons entre eux à partir du dictionnaire des noeuds (carrefours)
 
     Args:
-        dico_noeuds (dict): le dictionnaire des noeuds (FUV troncons)
+        dico_noeuds (dict): le dictionnaire des noeuds
 
     Returns:
         dict: le dictionnaire d'adjacences
@@ -180,14 +183,15 @@ def charger_donnees_adj(dico_noeuds):
     return rues_adj_gps  
 
 def charger_donnees_adj_poussette(dico_noeuds,dico_rues):
-    """creer le dictionnaire d'adjacence pour le moyen de transport poussette 
+    """Crée le dictionnaire d'adjacence des troncons entre eux en excluant les troncons
+    qui ne sont pas compatibles avec les critères définis pour le moyen de transport poussette 
 
     Args:
-        dico_noeuds (dict): le dictionnaire des noeuds (FUV troncons)
-        dico_rues (dict): le dictionnaire qui contient les proprietes des rues
+        dico_noeuds (dict): le dictionnaire des noeuds
+        dico_rues (dict): le dictionnaire qui contient les propriétés des rues
 
     Returns:
-        dict: le dictionnaire d'adjacence
+        dict: le dictionnaire d'adjacence poussette
     """
     pente_max = 8
     pente_moy = 5
@@ -223,14 +227,15 @@ def charger_donnees_adj_poussette(dico_noeuds,dico_rues):
     return rues_adj_poussette  
 
 def charger_donnees_adj_velo(dico_noeuds,dico_rues):
-    """creer le dictionnaire d'adjacence pour le moyen de transport velo
+    """Crée le dictionnaire d'adjacence des troncons entre eux en excluant les troncons
+    qui ne sont pas compatibles avec les critères définis pour le moyen de transport vélo
 
     Args:
-        dico_noeuds (dict): le dictionnaire des noeuds (FUV troncons)
-        dico_rues (dict): le dictionnaire qui contient les proprietes des rues
+        dico_noeuds (dict): le dictionnaire des noeuds
+        dico_rues (dict): le dictionnaire qui contient les propriétés des rues
 
     Returns:
-        dict: le dictionnaire d'adjacence
+        dict: le dictionnaire d'adjacence vélo
     """
     type_eviter = ["Escalier"]
     revettements_eviter = ["Végétation","Non revêtu"]
@@ -260,14 +265,15 @@ def charger_donnees_adj_velo(dico_noeuds,dico_rues):
     return rues_adj_velo
 
 def charger_donnees_adj_voiture(dico_noeuds,dico_rues):
-    """creer le dictionnaire d'adjacence pour le moyen de transport voiture
+    """Crée le dictionnaire d'adjacence des troncons entre eux en excluant les troncons
+    qui ne sont pas compatibles avec les critères définis pour le moyen de transport voiture
 
     Args:
-        dico_noeuds (dict): le dictionnaire des noeuds (FUV troncons)
-        dico_rues (dict): le dictionnaire qui contient les proprietes des rues
+        dico_noeuds (dict): le dictionnaire des noeuds
+        dico_rues (dict): le dictionnaire qui contient les propriétés des rues
 
     Returns:
-        dict: le dictionnaire d'adjacence
+        dict: le dictionnaire d'adjacence voiture
     """
     largeur_min_chaussee = 2.5
     type_eviter = ["Escalier","Bus","Pietons"]
@@ -297,14 +303,15 @@ def charger_donnees_adj_voiture(dico_noeuds,dico_rues):
     return rues_adj_voiture 
 
 def charger_donnees_adj_pied(dico_noeuds,dico_rues):
-    """creer le dictionnaire d'adjacence pour le moyen de transport pied
+    """Crée le dictionnaire d'adjacence des troncons entre eux en excluant les troncons
+    qui ne sont pas compatibles avec les critères définis pour le moyen de transport à pied
 
     Args:
         dico_noeuds (dict): le dictionnaire des noeuds (FUV troncons)
-        dico_rues (dict): le dictionnaire qui contient les proprietes des rues
+        dico_rues (dict): le dictionnaire qui contient les propriétés des rues
 
     Returns:
-        dict: le dictionnaire d'adjacence
+        dict: le dictionnaire d'adjacence pied
     """
     largeur_min_trot = 0.5
     revettements_eviter = ["Pavés","Végétation","Non revêtu"]
@@ -336,12 +343,14 @@ def charger_donnees_adj_pied(dico_noeuds,dico_rues):
     return rues_adj_pied
              
 def charger_donnees_adresses():
-    """charge les donnees des debouches (lieu d'arrivee et depart)
+    """Ouvre le dictionnaire de données du Grand Lyon relatif aux points de débouché (adresses existantes)
+    et utilise les données pour créer des dictionnaires des adresses existantes avec leurs coordonnées GPS,
+    rangées respectivement par numéro puis voie puis commune, voie puis numéro puis commune, ou commune puis voie puis numéro
 
     Returns:
-        dict: dictionnaire des numeros des adresses
-        dict: dictionnaire des nom des rues des adresses
-        dict: dictionnaire des nom des villes des adresses
+        dict: dictionnaire des adresses rangées en premier par les numéros
+        dict: dictionnaire des adresses rangées en premier par les rues
+        dict: dictionnaire des adresses rangées en premier par les communes
     """
     f_point_debouche = "point_debouche.geojson"
     arrondi_gps = 12                    
@@ -383,13 +392,15 @@ def charger_donnees_adresses():
     return dico_adresses_num, dico_adresses_rues, dico_adresses_communes
 
 def charger_donnees_centre(dico_adresses_communes):
-    """calcule les coordonnees gps des centres des villes/communes
+    """Calcule les coordonnées GPS des centres des villes/communes
+    et enregistre ces coordonnées dans le dictionnaire des adresses rangées par commune puis voie puis numéro
+    avec pour nom de voie "centre" et numéro de voie "0"
 
     Args:
-        dico_adresses_communes (dict): dictionnaires des noms des communes des adresses
+        dico_adresses_communes (dict): dictionnaire des adresses rangées par commune puis voie puis numéro
 
     Returns:
-        dict: dictionnaire des coordonnees GPS des centres des communes
+        dict: dictionnaire des adresses rangées par commune puis voie puis numéro
     """
     for commune in dico_adresses_communes.keys():
         somme_lat = 0.0
@@ -406,15 +417,23 @@ def charger_donnees_centre(dico_adresses_communes):
 
 
 def give_troncon_nearest_gps(co_gps_start, co_gps_end ,dico_rues,choix_transport):
-    """Trouve le couple troncon + FUV le plus proche des coordonnées gps fournis par l'utilisateur pour l'adresse de départ et d'arrivée
+    """Trouve le couple (fuv,troncon), présent dans le dictionnaires des troncons,
+    le plus proche des coordonnées GPS de départ renseignées
+    et celui le plus proche des coordonnées GPS d'arrivée également renseignées
+    Ces couples sont choisis en respectant les critères imposés par le choix du mode de transport de l'utilisateur
+    
     Args:
-        co_gps_user (tuple): coordonnées GPS (long,lat)
-        dico_rues (dict): le dictionnaire contenant les paramètres pour chaques couples troncon+FUV
+        co_gps_start (tuple): coordonnées GPS de départ (long,lat)
+        co_gps_end (tuple): coordonnées GPS d'arrivée (long,lat)
+        dico_rues (dict): le dictionnaire des troncons
+        choix_transport (int): entier définissant le mode tranport choisi par l'utilisateur
+    
     Returns:
-        dict: {(FUV,troncon) : [co_gps]}
+        tuple: identifiant (fuv,troncon) du troncon de départ
+        tuple: identifiant (fuv,troncon) du troncon d'arrivée
     """
     d_min_start = 2e+7 #ici on va comparer les distance carré entre elles (et la distance maximale étant la circonsphérence de la terre)
-    d_min_end = 2e+7 #ici on va comparer les distance carré entre elles (et la distance maximale étant la circonsphérence de la terre)
+    d_min_end = 2e+7
     id_rue_troncon_start = (0,0)
     id_rue_troncon_end = (0,0)
     if choix_transport == 1 :
@@ -507,19 +526,20 @@ def give_troncon_nearest_gps(co_gps_start, co_gps_end ,dico_rues,choix_transport
     return id_rue_troncon_start, id_rue_troncon_end
     
 def gestion_saisie(saisie_user, l_communes):
-    """Donne l'adresse complete valide d'une saisie de l'utilisateur
+    """Découpe la saisie de l'utilisateur et identifie des éléments d'adresse (numéro, rue, ...)
+    Retourne ces éléments ou None pour les élément(s) non-identifié(s)
 
     Args:
-        saisie_user (str): saise de l'utilisateur dans le champs d'entree de l'interface graphique
-        l_communes (list): la liste des communes
+        saisie_user (str): saise de l'utilisateur dans un champs d'entrée (départ ou arrivée) de l'interface graphique
+        l_communes (list): la liste des communes existantes
 
     Returns:
-        int: numero de l'adresse
-        str: le nom de la rue de l'adresse
-        str: le nom de la commune de l'adresse
-        list: la liste des communes possibles
-        float: la latitude de l'adresse
-        float: la longitude de l'adresse
+        int: le numero saisie
+        str: la rue saisie
+        str: la commune saisie
+        list: la liste des communes possibles en lien avec la saisie
+        float: la latitude saisie
+        float: la longitude saisie
     """
     liste_saisie = saisie_user.split(", ")
     latitude = None
@@ -574,21 +594,22 @@ def gestion_saisie(saisie_user, l_communes):
     return numero, rue, commune, com_possibles, latitude, longitude
 
 def give_troncon_address(numero, rue, commune, com_possibles, latitude, longitude, dico_adresses_num, dico_adresses_rues, dico_adresses_communes):
-    """Donne une liste des adresse possible en rapport avec la saisie de l'utilisateur
+    """Retourne une liste (au maximum 6 éléments) des adresses possibles
+    en fonction des éléments d'adresse (complets ou incomplets) identifiés dans la saisie utilisateur
 
     Args:
-        numero (int): le numero de l'adresse
-        rue (str): le nom de la rue
-        commune (str): le nom de la commune
-        com_possibles (list): liste des communes possible
-        latitude (float): la latitude de l'adresse
-        longitude (float): la longitude de l'adresse
-        dico_adresses_num (dict): le dictionnaire des numéros des adresses
-        dico_adresses_rues (dict): le dictionnaire des noms des rues
-        dico_adresses_communes (dict): le dictionnaire des noms des communes
+        numero (int): le numero saisie
+        rue (str): la rue saisie
+        commune (str): la commune saisie
+        com_possibles (list): la liste des communes possible en lien avec la saisie
+        latitude (float): la latitude saisie
+        longitude (float): la longitude saisie
+        dico_adresses_num (dict): le dictionnaire des adresses rangées en premier par les numéros
+        dico_adresses_rues (dict): le dictionnaire des adresses rangées en premier par les rues
+        dico_adresses_communes (dict): le dictionnaire des adresses rangées en premier par les communes
 
     Returns:
-        list:liste d'adresse possible
+        list: liste des adresses possibles
     """
     nb_prop_max = 6
     liste_adresses = []
@@ -690,17 +711,14 @@ def give_troncon_address(numero, rue, commune, com_possibles, latitude, longitud
                 for com in com_possibles:
                     if len(liste_adresses) < nb_prop_max :
                         liste_adresses.append(com+" centre")
-    print()
-    print(liste_adresses)
-    print()
-    print()
+
     return liste_adresses
 
 def dist_lat_lon_deg(start_lat,start_lon,end_lat,end_lon):
-    """
-    Donne la distance entre 2 points connaissant leurs coordonnées GPS
-    return :
-        float: la distance entre 2 points
+    """Retourne la distance en mètres entre deux points sur la Terre à partir de leurs coordonnées GPS en degrés
+    
+    Returns :
+        float: la distance en mètres entre deux points sur la Terre
     """ 
     distance = 0.0
     if abs(math.sin(math.radians(start_lat)) * math.sin(math.radians(end_lat)) + math.cos(math.radians(start_lon) - math.radians(end_lon)) * math.cos(math.radians(start_lat)) * math.cos(math.radians(end_lat))) < 1:
@@ -709,19 +727,23 @@ def dist_lat_lon_deg(start_lat,start_lon,end_lat,end_lon):
     return distance
 
 def a_star(start, goal, rues_adjacentes, dico_rues, crit_sens, crit_vitesse):
-    """Algorithme de parcours de graphs qui donne le chemins le plus courts entre 2 points en suivant le graphs
+    """Algorithme de parcours du graphes des troncons qui donne
+    le chemin le plus direct et le plus court entre deux troncons
+    Ce parcours de graphe peut être orienté ou non en fonction de la valeur du booléen crit_sens,
+    et est pondéré soit par la distance, soit par le temps de trajet (relatif à la vitesse)
+    en fonction de la valeur du booléen crit_vitesse
 
     Args:
-        start (tuple): point de depart (FUV,Troncon)
-        goal (tuple): point d'arrivee (FUV,Troncon)
-        rues_adjacentes (dict): le dictionnaire d'adjacence du graph parcouru
-        dico_rues (dict): le dictionnaire des proprietes des rues
-        crit_sens (Bool): active ou non le sens des rues
-        crit_vitesse (Bool): active ou non la vitesse des rues
+        start (tuple): identifiant (FUV,Troncon) du troncon de départ
+        goal (tuple): identifiant (FUV,Troncon) du troncon d'arrivée
+        rues_adjacentes (dict): le dictionnaire d'adjacence représentant le graphe parcouru
+        dico_rues (dict): le dictionnaire des propriétés des troncons
+        crit_sens (Bool): indique si le parcours de graphe est orienté ou non
+        crit_vitesse (Bool): indique le critère de pondération (distance ou temps)
 
     Returns:
-        list: la liste des couples (FUV,Troncon) du chemin calculé
-        float: la distance de ce chemin calculé
+        list: la liste des identifiants succesifs (FUV,Troncon) des troncons du chemin calculé
+        float: la distance du chemin calculé
     """
     queue = PriorityQueue()  # Créer une file de priorité pour les noeuds à explorer
     queue.put((0, start))  # Ajouter le tuple (pondération, noeud) à la file 
@@ -788,18 +810,63 @@ def a_star(start, goal, rues_adjacentes, dico_rues, crit_sens, crit_vitesse):
     print ("Le chemin le plus court est : ", path,', Pour une distance de ', dist_path, 'mètres (sauf mode voiture)')
     return path, dist_path
 
-def compute_cross(fuv_tr_pre, fuv_tr_suiv, dico_rues, rues_adjacentes):
-    """Permet de convertir les coordonnées GPS (lat,long) en un systeme de coordonnées cartesiennes pour tracer facilement les routes sur un canvas
+def consigne_noeud(fuv_tr_pre, fuv_tr_suiv, dico_rues, rues_adjacentes):
+    """Identifie le carrefour associé aux identifiants des troncons précédents et suivants,
+    identifie les troncons adjacents à ce carrefour, effectue la rotation et la normalistion du repère,
+    et retourne les instructions pour ce carrefour
 
     Args:
-        fuv_tr_pre (_type_): _description_
-        fuv_tr_suiv (_type_): _description_
-        dico_rues (dict): le dictionnaire qui contient les proprietes des rues
-        rues_adjacentes (dict): le dictionnaire d'adjacence
+        fuv_tr_pre (tuple): identifiant (fuv,troncon) du troncon précédent
+        fuv_tr_suiv (tuple): identifiant (fuv,troncon) du troncon suivant
+        dico_rues (dict): le dictionnaire qui contient les propriétés des troncons
+        rues_adjacentes (dict): le dictionnaire d'adjacences
 
     Returns:
-        dict: le dictionnaire d'adjence en coordonnees cartesienne
-        float: 
+        str: les instructions pour le carrefour en question
+    """
+    #Recherche des segments adjacents, compilation de leurs co GPS dans un dictionnaire
+    #puis passage en co cartesienne
+    dico_fuv_tr_adj, lat_noeud, long_noeud = compute_cross(fuv_tr_pre, fuv_tr_suiv, dico_rues, rues_adjacentes)
+    #calcul des points qui seront visible et qu'il faut donc prendre en compte pour l'orientation 
+    dist_min = calcul_dist_min(dico_fuv_tr_adj)
+    i = 1
+    while i < len(dico_fuv_tr_adj["precedent"][fuv_tr_pre]) - 1 and distance(dico_fuv_tr_adj["precedent"][fuv_tr_pre], 0, i) < dist_min:
+        i += 1
+    #Calcul de l'angle entre le segment precedent (premier et dernier point GPS potentiellement dans le cadre final)
+    # et l'horizontale (axe x)
+    x_noeud = dico_fuv_tr_adj["precedent"][fuv_tr_pre][0][0]
+    y_noeud = dico_fuv_tr_adj["precedent"][fuv_tr_pre][0][1]
+    x_precedent = dico_fuv_tr_adj["precedent"][fuv_tr_pre][i][0]
+    y_precedent = dico_fuv_tr_adj["precedent"][fuv_tr_pre][i][1]
+    alpha_pre = calcul_angle(x_noeud, y_noeud, x_precedent, y_precedent)
+    #Rotation du repere pour avoir le segment precedent en bas de l'ecran, vertical
+    dico_fuv_tr_rot = rotation_repere(alpha_pre, dico_fuv_tr_adj)
+    #Determination de l'extrémité d'un segment adjacent la plus proche du noeud
+    # selon la norme infini (cf. cours de maths)
+    # permet d'avoir la vision la plus large possible sans voir d'autres noeuds
+    norme_min = calcul_norme_min(dico_fuv_tr_rot)
+    xy_noeud = dico_fuv_tr_rot["precedent"][fuv_tr_pre][0]
+    #Mise à l'echelle des co en fonction de la distance min
+    dico_fuv_tr_carte = xy_cartesien(norme_min, dico_fuv_tr_rot, xy_noeud, 400, 400)
+    #détermination de la consigne
+    text_instruction = instructions(dico_fuv_tr_carte, fuv_tr_pre, fuv_tr_suiv, dico_rues)
+    return text_instruction
+
+def compute_cross(fuv_tr_pre, fuv_tr_suiv, dico_rues, rues_adjacentes):
+    """Identifie le carrefour associé aux identifiants des troncons précédents et suivants,
+    identifie les troncons adjacents à ce carrefour, convertit les coordonnées GPS de tous ces troncons en coordonnées cartésiennes sans normalisation
+    et range toutes ces informations dans un dictionnaire retourné par la fonction en plus de la latitude et la longitude du noeud
+
+    Args:
+        fuv_tr_pre (tuple): identifiant (fuv,troncon) du troncon précédent
+        fuv_tr_suiv (tuple): identifiant (fuv,troncon) du troncon suivant
+        dico_rues (dict): le dictionnaire qui contient les propriétés des troncons
+        rues_adjacentes (dict): le dictionnaire d'adjacences
+
+    Returns:
+        dict: le dictionnaire avec les troncons précédent, suivant et adjacents et leurs coordonnées cartésiennes sans normalisation
+        float: latitude du noeud
+        float: longitude du noeud
     """
     #On recup les infos sur les segments precedent et suivant
     info_pre = dico_rues[fuv_tr_pre[0]][fuv_tr_pre[1]]
@@ -846,15 +913,16 @@ def compute_cross(fuv_tr_pre, fuv_tr_suiv, dico_rues, rues_adjacentes):
     return dico_fuv_tr_xy, co_gps_noeud[-1], co_gps_noeud[0]
 
 def xy_lat_long(latitude, longitude, latitude_ref):
-    """effectue le conversion de la latitude et de la longitude en coordonnées cartesienne
+    """Retourne les coordonnées cartésiennes sans normalisation d'un point
+    en fonction de ces coordonnées GPS et d'une latitude de référence
 
     Args:
-        latitude (float): la latitude du point
-        longitude (float): la longitude du point
-        latitude_ref (float): la latitude de reférence du lieu
+        latitude (float): latitude du point
+        longitude (float): longitude du point
+        latitude_ref (float): latitude de référence
 
     Returns:
-        list: les coordonnées cartesiennes du point
+        list: coordonnées cartésiennes sans normalisation
     """
     #on fait en sorte que la longitude soit comprise entre 0 et 360 et non entre -180 et 180
     longitude = longitude + 180
@@ -868,7 +936,9 @@ def xy_lat_long(latitude, longitude, latitude_ref):
     return [x, y]
 
 def calcul_angle(x1, y1, x2, y2):
-    """Donne l'angle entre 2 points dans le systeme de coordonnees GPS
+    """Retourne l'angle entre un segment (défini par deux points en coordonnées cartésiennes)
+    et un axe horizontal orienté de gauche à droite (l'axe x de l'interface Tkinter)
+    La valeur de l'angle est comprise entre -pi/2 et 3pi/2
 
     Args:
         x1 (float): abscisse du premier point
@@ -877,9 +947,8 @@ def calcul_angle(x1, y1, x2, y2):
         y2 (float): ordonnee du deuxieme point
 
     Returns:
-        float: l'angle
+        float: la valeur de l'angle
     """
-    #tout est dans le titre
     delta_x = x2 - x1
     delta_y = y2 - y1
     alpha = math.pi/2
@@ -892,14 +961,15 @@ def calcul_angle(x1, y1, x2, y2):
     return alpha
 
 def rotation_repere(angle, dico_fuv_tr_adj):
-    """Effectue la rotations des coordonnées pour changer de repere dans les coordonnées cartesienne (pour toujours mettre la route suivante vers le haut même vision que dans la voiture)
+    """Retourne le dictionnaire avec les troncons précédent, suivant et adjacents et leurs coordonnées cartésiennes
+    sans normalisation mais après rotation du repère pour que le troncon précédent soit vertical ascendant
 
     Args:
         angle (float): l'angle de rotation
-        dico_fuv_tr_adj (dict): le dictionnaire d'adjacence en coordonnées cartesienne
+        dico_fuv_tr_adj (dict): le dictionnaire avec les troncons précédent, suivant et adjacents en coordonnées cartesienne sans normalisation
 
     Returns:
-        dict: le dictionnaire d'adjacence avec la rotation effectuée
+        dict: le dictionnaire avec les troncons précédent, suivant et adjacents en coordonnées cartesienne sans normalisation après rotation du repère
     """
     # on fait un nouveau dico, tjrs sur le meme model et en co cartésienne
     # mais avec les co cartésienne qui font que le segment precdent est vertical
@@ -917,17 +987,25 @@ def rotation_repere(angle, dico_fuv_tr_adj):
     return dico_fuv_tr_rot
 
 def xy_cartesien(dist_min, dico_fuv_tr_rot, xy_noeud, width_canvas, height_canvas):
-    """donne un dictionnaire en coordonnée cartesienne et a l'echelle de l'affichage
+    """Retourne le dictionnaire avec les troncons précédent, suivant et adjacents
+    et leurs coordonnées cartésiennes après normalisation de ces coordonnées à l'echelle de l'affichage
+    
+    Cette mise à l'echelle a pour objectif de fournir le point de vue le plus large possible
+    du carrefour sans toutefois afficher d'autres carrefours (pour simplifier l'affichage)
+    On s'arrange donc pour placer le carrefour le plus proche selon la norme infinie 
+    (extrémité du troncon précédent, suivant ou parmi les adjacents) sur un bord de la fenêtre
+    Pour cela on définie une echelle pour avoir deux fois cette norme min en largeur et hauteur
+    
 
     Args:
-        dist_min (float): la distance minimale a afficher
-        dico_fuv_tr_rot (dict): le dictionanire des coordonnées en cartesiennes
-        xy_noeud (tuple): la position du noeud central d'affichage
+        dist_min (float): la distance selon la norme infinie du carrefour le plus proche
+        dico_fuv_tr_rot (dict): le dictionnaire avec les troncons précédent, suivant et adjacents en coordonnées cartesienne sans normalisation après rotation du repère
+        xy_noeud (list): les coordonnées cartésiennes sans normalisation du noeuds
         width_canvas (float): largeur du canvas
         height_canvas (float): hauteur du canvas
 
     Returns:
-        dict: le nouveau dictionnaire
+        dict: le dictionnaire avec les troncons précédent, suivant et adjacents en coordonnées cartesienne après rotation du repère et normalisation
     """
     #on fait un nouveau dico, tjrs sur le meme model et en co cartésienne
     # mais cette fois ci l'echelle change pour que les co correspondent avec l'affichage dans le canvas
@@ -944,16 +1022,16 @@ def xy_cartesien(dist_min, dico_fuv_tr_rot, xy_noeud, width_canvas, height_canva
     return dico_fuv_tr_carte
 
 def calcul_norme_min(dico_fuv_tr_rot):
-    """donne la norme minimale
+    """Retourne la norme infinie minimale entre le noeud et les extrémités des troncons du dictionnaire
 
     Args:
-        dico_fuv_tr_rot (dict): le dictionnaire des (fUV,Troncons)
+        dico_fuv_tr_rot (dict): le dictionnaire avec les troncons précédent, suivant et adjacents en coordonnées cartesienne sans normalisation après rotation du repère
 
     Returns:
-        float: la norme minimale
+        float: la norme infinie minimale
     """
     #Determination de l'extrémité d'un segment adjacent la plus proche du noeud
-    # selon la norme infini (cf. cours de maths)
+    # selon la norme infinie (cf. cours de maths)
     # permet d'avoir la vision la plus large possible sans voir d'autres noeuds
     norme_min = math.inf
     for categorie in dico_fuv_tr_rot:
@@ -965,13 +1043,13 @@ def calcul_norme_min(dico_fuv_tr_rot):
     return norme_min
 
 def calcul_dist_min(dico_fuv_tr_adj):
-    """Calcule la distance minimale
+    """Retourne la norme deux (norme canonique) minimale entre le noeud et les extrémités des troncons du dictionnaire
 
     Args:
-        dico_fuv_tr_adj (dict): le dictionnaire des (fUV,Troncons)
+        dico_fuv_tr_adj (dict): le dictionnaire avec les troncons précédent, suivant et adjacents en coordonnées cartesienne sans normalisation
 
     Returns:
-        float: la distance minimale
+        float: la norme deux minimale
     """
     #Determination de l'extrémité d'un segment adjacent la plus proche du noeud
     # selon la norme 2 (cf. cours de maths)
@@ -985,30 +1063,32 @@ def calcul_dist_min(dico_fuv_tr_adj):
     return dist_min
 
 def distance(co_gps, index1, index2):
-    """calcule la distance entre 2 points
+    """Retourne la distance selon la norme deux entre deux points définis par leurs index dans une liste de coordonnées
 
     Args:
-        co_gps (list): liste de coordonnees gps
-        index1 (int): le tuple du coordonnees gps choisi
-        index2 (int): le tuple du coordonnees gps choisi
+        co_gps (list): liste de coordonnées gps
+        index1 (int): l'index du premier point dans la liste GPS
+        index2 (int): l'index du second point dans la liste GPS
 
     Returns:
-        float: la distance
+        float: la distance selon la norme deux
     """
     # distance selon la norme 2 entre 2 points definis par leur index dans une liste de coordonnees
     return math.sqrt((co_gps[index2][0]-co_gps[index1][0])**2+(co_gps[index2][1]-co_gps[index1][1])**2)
 
 
 def instructions(dico_fuv_tr_carte, fuv_tr_pre, fuv_tr_suiv, dico_rues):
-    """Retourne les instructions en texte selon la nouvelle direction/route à prendre
+    """Retourne les instructions en texte selon la nouvelle direction et route à prendre
+    pour un carrefour donné
 
     Args:
-        dico_fuv_tr_carte (dict): le dictionnaire d'adjancence (FUV,Troncon)
-        fuv_tr_pre (tuple): code (fuv,troncon) du point precedent
-        fuv_tr_suiv (tuple): code (fuv,troncon) du point suivant
-        dico_rues (dict): le dictionnaire contient les proprietes des rues
+        dico_fuv_tr_carte (dict): le dictionnaire avec les troncons précédent, suivant et adjacents en coordonnées cartesienne après rotation du repère et normalisation
+        fuv_tr_pre (tuple): identifiant (fuv,troncon) du troncon précédent
+        fuv_tr_suiv (tuple): identifiant (fuv,troncon) du troncon suivant
+        dico_rues (dict): le dictionnaire qui contient les propriétés des troncons
+    
     Returns:
-        str: les instructions à afficher sur l'interface graphique
+        str: les instructions pour le carrefour en question
     """
 
     i = 1
@@ -1039,45 +1119,6 @@ def instructions(dico_fuv_tr_carte, fuv_tr_pre, fuv_tr_suiv, dico_rues):
         texte_instruction += "route sans nom"
     return texte_instruction
 
-def consigne_noeud(fuv_tr_pre, fuv_tr_suiv, dico_rues, rues_adjacentes):
-    """Donne la consigne associe a un noeud pour un suivant
-
-    Args:
-        fuv_tr_pre (tuple): code (fuv,troncon) du noeud precedent
-        fuv_tr_suiv (tuple): code (fuv,troncon) noeud suivant
-        dico_rues (dict): dictionnaire des proprietes de rues
-        rues_adjacentes (dict): dictionnaire d'adjacence
-
-    Returns:
-        str: les instructions
-    """
-    #Recherche des segments adjacents, compilation de leurs co GPS dans un dictionnaire
-    #puis passage en co cartesienne
-    dico_fuv_tr_adj, lat_noeud, long_noeud = compute_cross(fuv_tr_pre, fuv_tr_suiv, dico_rues, rues_adjacentes)
-    #calcul des points qui seront visible et qu'il faut donc prendre en compte pour l'orientation 
-    dist_min = calcul_dist_min(dico_fuv_tr_adj)
-    i = 1
-    while i < len(dico_fuv_tr_adj["precedent"][fuv_tr_pre]) - 1 and distance(dico_fuv_tr_adj["precedent"][fuv_tr_pre], 0, i) < dist_min:
-        i += 1
-    #Calcul de l'angle entre le segment precedent (premier et dernier point GPS potentiellement dans le cadre final)
-    # et l'horizontale (axe x)
-    x_noeud = dico_fuv_tr_adj["precedent"][fuv_tr_pre][0][0]
-    y_noeud = dico_fuv_tr_adj["precedent"][fuv_tr_pre][0][1]
-    x_precedent = dico_fuv_tr_adj["precedent"][fuv_tr_pre][i][0]
-    y_precedent = dico_fuv_tr_adj["precedent"][fuv_tr_pre][i][1]
-    alpha_pre = calcul_angle(x_noeud, y_noeud, x_precedent, y_precedent)
-    #Rotation du repere pour avoir le segment precedent en bas de l'ecran, vertical
-    dico_fuv_tr_rot = rotation_repere(alpha_pre, dico_fuv_tr_adj)
-    #Determination de l'extrémité d'un segment adjacent la plus proche du noeud
-    # selon la norme infini (cf. cours de maths)
-    # permet d'avoir la vision la plus large possible sans voir d'autres noeuds
-    norme_min = calcul_norme_min(dico_fuv_tr_rot)
-    xy_noeud = dico_fuv_tr_rot["precedent"][fuv_tr_pre][0]
-    #Mise à l'echelle des co en fonction de la distance min
-    dico_fuv_tr_carte = xy_cartesien(norme_min, dico_fuv_tr_rot, xy_noeud, 400, 400)
-    #détermination de la consigne
-    text_instruction = instructions(dico_fuv_tr_carte, fuv_tr_pre, fuv_tr_suiv, dico_rues)
-    return text_instruction
-
 if __name__ == "__main__" :
     adj,rue = charger_donnees_troncon()
+
