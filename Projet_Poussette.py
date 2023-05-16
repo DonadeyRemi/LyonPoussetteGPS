@@ -224,6 +224,8 @@ class MainWindow():
                 self.timer_id = self.root.after(10, self.automatique)
 
     def automatique(self):
+        """Efface et retrace automatiquement le carrefour suivant sur la fenetre détail du trajet
+        """
         if self.etape + 2 < len(self.itineraire):
             self.etape += 1
             self.temps_pause = int(1000/(self.vitesse.get()/100))
@@ -249,6 +251,11 @@ class MainWindow():
             self.button_automatique.config(bg='gray')
 
     def get_entry_start(self, event):
+        """Fonction callback sur le champs d'entree associee a l'adresse de depart
+
+        Args:
+            event (tk event): l'evenement utilisateur
+        """
         if event.widget.get() != self.saisie_user_start and event.widget.get() != "":
             self.saisie_user_start = event.widget.get()
             numero, rue, commune, com_possibles, latitude, longitude = Load_Files.gestion_saisie(self.saisie_user_start, list(self.dico_adresses_communes.keys()))
@@ -261,6 +268,11 @@ class MainWindow():
             self.start_selection.event_generate('<Down>',when="tail")
     
     def down_start(self, event):
+        """Fonction callback appellee lorsque l'on cherche à dérouler la combobox pour proposer les choix de l'adresse de depart
+
+        Args:
+            event (tk event): l'evenement utilisateur
+        """
         if event.widget.get() != self.saisie_user_start and event.widget.get() != "":
             self.saisie_user_start = event.widget.get()
             numero, rue, commune, com_possibles, latitude, longitude = Load_Files.gestion_saisie(self.saisie_user_start, list(self.dico_adresses_communes.keys()))
@@ -269,6 +281,11 @@ class MainWindow():
         self.start_selection.event_generate('<Down>',when="tail")
      
     def choose_start(self, event):
+        """Fonction callback appellee lorsque l'on clique sur un choix proposée dans la combobox de depart
+
+        Args:
+            event (tk event): evenement utilisateur
+        """
         self.start_selection.configure(foreground = "green")
         self.start_select_state = True
         saisie = event.widget.get().split(", ")
@@ -307,10 +324,20 @@ class MainWindow():
         self.root.after(100, self.recup_fuv_troncon)
 
     def effacer_start(self,event):
+        """Fonction callback appellee lorsquel'on cherche à écrire dans le champ d'entree de l'adresse de depart pour effacer le choix précédent
+
+        Args:
+            event (tk event): evenement utilisateur
+        """
         if self.start_selection.get() == "Départ":
             self.start_selection.set("")
             
     def ecrire_start(self,event):
+        """fonction callback pour ecrire dans le champ d'entrée de l'adresse de depart l'adresse choisie
+
+        Args:
+            event (tk event): evenement utilisateur
+        """
         saisie = self.start_selection.get()
         saisie = saisie.strip(" ")
         if saisie == "":
@@ -319,6 +346,11 @@ class MainWindow():
             self.start_select_state = False
             
     def get_entry_end(self, event):
+        """Fonction callback sur le champs d'entree associee a l'adresse d'arrivée
+
+        Args:
+            event (tk event): l'evenement utilisateur
+        """
         if event.widget.get() != self.saisie_user_end and event.widget.get() != "":
             self.saisie_user_end = event.widget.get()
             numero, rue, commune, com_possibles, latitude, longitude = Load_Files.gestion_saisie(self.saisie_user_end, list(self.dico_adresses_communes.keys()))
@@ -331,6 +363,11 @@ class MainWindow():
             self.end_selection.event_generate('<Down>',when="tail")
     
     def down_end(self, event):
+        """Fonction callback appellee lorsque l'on cherche à dérouler la combobox pour proposer les choix de l'adresse d'arrivee
+
+        Args:
+            event (tk event): l'evenement utilisateur
+        """
         if event.widget.get() != self.saisie_user_end and event.widget.get() != "":
             self.saisie_user_end = event.widget.get()
             numero, rue, commune, com_possibles, latitude, longitude = Load_Files.gestion_saisie(self.saisie_user_end, list(self.dico_adresses_communes.keys()))
@@ -339,6 +376,11 @@ class MainWindow():
         self.end_selection.event_generate('<Down>',when="tail")
     
     def choose_end(self, event):
+        """Fonction callback appellee lorsque l'on clique sur un choix proposée dans la combobox d'arrivee
+
+        Args:
+            event (tk event): evenement utilisateur
+        """
         self.end_selection.configure(foreground = "green")
         self.end_select_state = True
         saisie = event.widget.get().split(", ")
@@ -378,10 +420,20 @@ class MainWindow():
         self.root.after(100, self.recup_fuv_troncon)
     
     def effacer_end(self,event):
+        """Fonction callback appellee lorsquel'on cherche à écrire dans le champ d'entree de l'adresse d'arrivee pour effacer le choix précédent
+
+        Args:
+            event (tk event): evenement utilisateur
+        """
         if self.end_selection.get() == "Arrivée":
             self.end_selection.set("")
             
     def ecrire_end(self,event):
+        """fonction callback pour ecrire dans le champ d'entrée de l'adresse d'arrivee l'adresse choisie
+
+        Args:
+            event (tk event): evenement utilisateur
+        """
         saisie = self.end_selection.get()
         saisie = saisie.strip(" ")
         if saisie == "":
@@ -390,6 +442,8 @@ class MainWindow():
             self.end_select_state = False
 
     def recup_fuv_troncon(self):
+        """Recupère le code fuv,troncon en fonction des coordonnee gps du point actuel
+        """
         if self.start_select_state and self.end_select_state :
             self.depart_fuv, self.arrivee_fuv = Load_Files.give_troncon_nearest_gps(self.depart, self.arrivee, self.dico_rues, self.choice_vehicule.get())
 
