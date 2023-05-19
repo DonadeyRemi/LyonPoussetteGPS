@@ -12,7 +12,7 @@ Also you need to install some extra packages
 /!\ Keep all the files in the same folder /!\
 You have to be connected to internet to use the app and the interactive map !
 Open the file named Projet_Poussette.py with Spyder (anacaonda3) or any other IDE for Python.
-Load it with your IDE, a loarding page must appear.
+Load it with your IDE, a loading page must appear.
 At the end of the loading time, you will be able to write your intinerary with your travel conditions and explore the map. 
 When you are ready click on "Lancer la recherche".
 The path is now visible on the map. And you can see the details of the itinerary (you can click on them to see in an another page the crossroads). 
