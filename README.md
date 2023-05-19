@@ -1,6 +1,13 @@
 ## LyonPoussetteGPS ##
 It's a educationnal project, from INSA Lyon, ingenniering school in France. It is an application that calculate the best way to go to a A point to a B point with differents parameters choosen by the user
 
+## Getting Started ##
+You need to have a valid python 3 installed on our computer, 
+Also you need to install some extra packages
+* PriorityQueue (with pip install PriorityQueue)
+* tkscrolledframe (with pip install tkScrolledFrame)
+* tkintermapview ( with pip install tkintermapview)
+
 ## How to use it ##
 /!\ Keep all the files in the same folder /!\
 You have to be connected to internet to use the app and the interactive map !
