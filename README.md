@@ -3,7 +3,7 @@ It's a educationnal project, from INSA Lyon, ingenniering school in France. It i
 
 ## How to use it ##
 /!\ Keep all the files in the same folder /!\
-
+You have to be connected to internet to use the app and the interactive map !
 Open the file named Projet_Poussette.py with Spyder (anacaonda3) or any other IDE for Python.
 Load it with your IDE, a loarding page must appear.
 At the end of the loading time, you will be able to write your intinerary with your travel conditions and explore the map. 
