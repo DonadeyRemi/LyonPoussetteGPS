@@ -10,7 +10,8 @@ import math
 from queue import PriorityQueue
 
 def charger_donnees_troncon():
-    """Ouvre le dictionnaire de données du Grand Lyon relatif aux troncons
+    """
+    Ouvre le dictionnaire de données du Grand Lyon relatif aux troncons
     et utilise les données pour créer un dictionnaires des troncons avec leurs caractéristiques et un dictionnaires des noeuds 
 
     Returns:
@@ -61,7 +62,8 @@ def charger_donnees_troncon():
     return dico_noeuds, dico_rues
 
 def charger_donnees_chaussees(dico_noeuds, dico_rues):
-    """Ouvre le dictionnaire de données du Grand Lyon relatif aux chaussées et trotoirs
+    """
+    Ouvre le dictionnaire de données du Grand Lyon relatif aux chaussées et trotoirs
     et complète les dictionnaires créés par charger_donnees_troncon() avec les données du fichier ouvert
     
     Args:
@@ -133,7 +135,8 @@ def charger_donnees_chaussees(dico_noeuds, dico_rues):
     return dico_noeuds, dico_rues
     
 def correction_dico_noeuds(dico_noeuds):
-    """Ajuste le dictionnaire des noeuds pour enlever les noeuds qui ne sont pas des carrefours
+    """
+    Ajuste le dictionnaire des noeuds pour enlever les noeuds qui ne sont pas des carrefours
     (noeuds qui sont reliés à moins de 2 troncons)
 
     Args:
@@ -153,7 +156,8 @@ def correction_dico_noeuds(dico_noeuds):
     return dico_noeuds
     
 def charger_donnees_adj(dico_noeuds):
-    """Crée le dictionnaire d'adjacence des troncons entre eux à partir du dictionnaire des noeuds (carrefours)
+    """
+    Crée le dictionnaire d'adjacence des troncons entre eux à partir du dictionnaire des noeuds (carrefours)
 
     Args:
         dico_noeuds (dict): le dictionnaire des noeuds
@@ -183,7 +187,8 @@ def charger_donnees_adj(dico_noeuds):
     return rues_adj_gps  
 
 def charger_donnees_adj_poussette(dico_noeuds,dico_rues):
-    """Crée le dictionnaire d'adjacence des troncons entre eux en excluant les troncons
+    """
+    Crée le dictionnaire d'adjacence des troncons entre eux en excluant les troncons
     qui ne sont pas compatibles avec les critères définis pour le moyen de transport poussette 
 
     Args:
@@ -227,7 +232,8 @@ def charger_donnees_adj_poussette(dico_noeuds,dico_rues):
     return rues_adj_poussette  
 
 def charger_donnees_adj_velo(dico_noeuds,dico_rues):
-    """Crée le dictionnaire d'adjacence des troncons entre eux en excluant les troncons
+    """
+    Crée le dictionnaire d'adjacence des troncons entre eux en excluant les troncons
     qui ne sont pas compatibles avec les critères définis pour le moyen de transport vélo
 
     Args:
@@ -265,7 +271,8 @@ def charger_donnees_adj_velo(dico_noeuds,dico_rues):
     return rues_adj_velo
 
 def charger_donnees_adj_voiture(dico_noeuds,dico_rues):
-    """Crée le dictionnaire d'adjacence des troncons entre eux en excluant les troncons
+    """
+    Crée le dictionnaire d'adjacence des troncons entre eux en excluant les troncons
     qui ne sont pas compatibles avec les critères définis pour le moyen de transport voiture
 
     Args:
@@ -303,7 +310,8 @@ def charger_donnees_adj_voiture(dico_noeuds,dico_rues):
     return rues_adj_voiture 
 
 def charger_donnees_adj_pied(dico_noeuds,dico_rues):
-    """Crée le dictionnaire d'adjacence des troncons entre eux en excluant les troncons
+    """
+    Crée le dictionnaire d'adjacence des troncons entre eux en excluant les troncons
     qui ne sont pas compatibles avec les critères définis pour le moyen de transport à pied
 
     Args:
@@ -343,7 +351,8 @@ def charger_donnees_adj_pied(dico_noeuds,dico_rues):
     return rues_adj_pied
              
 def charger_donnees_adresses():
-    """Ouvre le dictionnaire de données du Grand Lyon relatif aux points de débouché (adresses existantes)
+    """
+    Ouvre le dictionnaire de données du Grand Lyon relatif aux points de débouché (adresses existantes)
     et utilise les données pour créer des dictionnaires des adresses existantes avec leurs coordonnées GPS,
     rangées respectivement par numéro puis voie puis commune, voie puis numéro puis commune, ou commune puis voie puis numéro
 
@@ -392,7 +401,8 @@ def charger_donnees_adresses():
     return dico_adresses_num, dico_adresses_rues, dico_adresses_communes
 
 def charger_donnees_centre(dico_adresses_communes):
-    """Calcule les coordonnées GPS des centres des villes/communes
+    """
+    Calcule les coordonnées GPS des centres des villes/communes
     et enregistre ces coordonnées dans le dictionnaire des adresses rangées par commune puis voie puis numéro
     avec pour nom de voie "centre" et numéro de voie "0"
 
@@ -417,7 +427,8 @@ def charger_donnees_centre(dico_adresses_communes):
 
 
 def give_troncon_nearest_gps(co_gps_start, co_gps_end ,dico_rues,choix_transport):
-    """Trouve le couple (fuv,troncon), présent dans le dictionnaires des troncons,
+    """
+    Trouve le couple (fuv,troncon), présent dans le dictionnaires des troncons,
     le plus proche des coordonnées GPS de départ renseignées
     et celui le plus proche des coordonnées GPS d'arrivée également renseignées
     Ces couples sont choisis en respectant les critères imposés par le choix du mode de transport de l'utilisateur
@@ -526,7 +537,8 @@ def give_troncon_nearest_gps(co_gps_start, co_gps_end ,dico_rues,choix_transport
     return id_rue_troncon_start, id_rue_troncon_end
     
 def gestion_saisie(saisie_user, l_communes):
-    """Découpe la saisie de l'utilisateur et identifie des éléments d'adresse (numéro, rue, ...)
+    """
+    Découpe la saisie de l'utilisateur et identifie des éléments d'adresse (numéro, rue, ...)
     Retourne ces éléments ou None pour les élément(s) non-identifié(s)
 
     Args:
@@ -594,7 +606,8 @@ def gestion_saisie(saisie_user, l_communes):
     return numero, rue, commune, com_possibles, latitude, longitude
 
 def give_troncon_address(numero, rue, commune, com_possibles, latitude, longitude, dico_adresses_num, dico_adresses_rues, dico_adresses_communes):
-    """Retourne une liste (au maximum 6 éléments) des adresses possibles
+    """
+    Retourne une liste (au maximum 6 éléments) des adresses possibles
     en fonction des éléments d'adresse (complets ou incomplets) identifiés dans la saisie utilisateur
 
     Args:
@@ -715,7 +728,8 @@ def give_troncon_address(numero, rue, commune, com_possibles, latitude, longitud
     return liste_adresses
 
 def dist_lat_lon_deg(start_lat,start_lon,end_lat,end_lon):
-    """Retourne la distance en mètres entre deux points sur la Terre à partir de leurs coordonnées GPS en degrés
+    """
+    Retourne la distance en mètres entre deux points sur la Terre à partir de leurs coordonnées GPS en degrés
     
     Returns :
         float: la distance en mètres entre deux points sur la Terre
@@ -727,7 +741,8 @@ def dist_lat_lon_deg(start_lat,start_lon,end_lat,end_lon):
     return distance
 
 def a_star(start, goal, rues_adjacentes, dico_rues, crit_sens, crit_vitesse):
-    """Algorithme de parcours du graphes des troncons qui donne
+    """
+    Algorithme de parcours du graphes des troncons qui donne
     le chemin le plus direct et le plus court entre deux troncons
     Ce parcours de graphe peut être orienté ou non en fonction de la valeur du booléen crit_sens,
     et est pondéré soit par la distance, soit par le temps de trajet (relatif à la vitesse)
@@ -742,8 +757,8 @@ def a_star(start, goal, rues_adjacentes, dico_rues, crit_sens, crit_vitesse):
         crit_vitesse (Bool): indique le critère de pondération (distance ou temps)
 
     Returns:
-        list: la liste des identifiants succesifs (FUV,Troncon) des troncons du chemin calculé
-        float: la distance du chemin calculé
+        path (list): la liste des identifiants succesifs (FUV,Troncon) des troncons du chemin calculé
+        dist_path (float): la distance du chemin calculé
     """
     queue = PriorityQueue()  # Créer une file de priorité pour les noeuds à explorer
     queue.put((0, start))  # Ajouter le tuple (pondération, noeud) à la file 
@@ -807,7 +822,7 @@ def a_star(start, goal, rues_adjacentes, dico_rues, crit_sens, crit_vitesse):
         path = []
         dist_path = 0
 
-    print ("Le chemin le plus court est : ", path,', Pour une distance de ', dist_path, 'mètres (sauf mode voiture)')
+    print ("Le chemin le plus court est : ", path,', Pour une distance de ', dist_path, ' mètres (sauf mode voiture)')
     return path, dist_path
 
 def consigne_noeud(fuv_tr_pre, fuv_tr_suiv, dico_rues, rues_adjacentes):
